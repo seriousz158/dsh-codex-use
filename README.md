@@ -11,6 +11,19 @@
 > 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。插件的协议 schema 固定于
 > Codex CLI `0.144.1`，升级 Codex CLI 后应先重新生成并审查 schema。
 
+## 标准安装（推荐）
+
+插件市场和 DSH 官方插件 CLI 使用同一条 Bundle 安装路径。对 GitHub source 版本，直接
+把 monorepo 中的可安装子包作为 profile 插件加入：
+
+```zsh
+dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh-codex-appserver
+```
+
+该命令会把 `dsh-codex-appserver` 加入 profile 的 `dsh.profile.bundles`，并自动读取子包
+中的 `cordis.patch.yml`。如果 profile 曾经通过旧安装器安装过本插件，请先按“旧版手工
+安装迁移”处理共享 patch，避免同一个 loader 被挂载两次。
+
 ## 功能边界
 
 - DSH 会话可以选择 Codex 模型，并复用 DSH 的流式消息、取消和 usage 展示。
@@ -30,7 +43,19 @@
 | Codex CLI | `0.144.1` |
 | 运行环境 | macOS + zsh（安装脚本） |
 
-## 安装到已有 DSH
+## 旧版手工安装迁移
+
+`integrations/dsh/dsh-codex-install` 仍保留给 DSH `rc.6` 及以上的开发调试场景。它使用共享
+`$DSH_HOME/cordis.patch.yml`，写入 `codex-appserver-manual` 条目；当 Bundle 已存在时，
+该条目会自动禁用，因此不会与官方 Bundle 重复挂载。
+
+旧版本已经写入 `id: codex-appserver` 的用户，重新运行安装器会：
+
+1. 在同一目录创建带随机后缀的 patch 备份；
+2. 将旧条目安全迁移为 `codex-appserver-manual`；
+3. 保留原有其它 patch，不覆盖或删除用户配置。
+
+## 安装到已有 DSH（兼容入口）
 
 安装器默认使用 `DSH_HOME=$HOME/.dsh`，也可以显式指定：
 
@@ -45,8 +70,9 @@ DSH_HOME="${DSH_HOME:-$HOME/.dsh}" \
 
 1. 在 `$DSH_HOME/profiles/node_modules/` 建立 `dsh-codex-appserver` 软链；
 2. 在插件目录建立指向同一 DSH profile modules 的忽略软链；
-3. 在 `$DSH_HOME/cordis.patch.yml` 注册一次 `codex-appserver`；
-4. 拒绝 Web patch 中的重复注册，避免 DSH 的 duplicate loader id 启动错误。
+3. 在 `$DSH_HOME/cordis.patch.yml` 注册一次带 Bundle 重复保护的 `codex-appserver-manual`；
+4. 迁移可识别的旧 `codex-appserver` 条目并先创建备份；
+5. 拒绝 Web patch 中的重复注册，避免 DSH 的 duplicate loader id 启动错误。
 
 安装器不会复制 `.dsh` 运行时、凭据、会话、长期记忆或浏览器数据。安装后重启 DSH，
 在模型/Provider 选择器中显式选择 `OpenAI Codex（ChatGPT）`。如果不选择，默认仍是
@@ -121,7 +147,16 @@ npm run scan:secrets
 当前插件只保留本机 stdio 边界；它不会启动 `127.0.0.1:57321` 一类自定义 HTTP provider，
 也不会把 DSH 的凭据环境变量传给 Codex 子进程。
 
+## 发布形态
+
+- `packages/dsh-codex-appserver/package.json` 声明 `dsh.bundle.patch` 和 `dsh.client`；
+- `packages/dsh-codex-appserver/cordis.patch.yml` 只插入一个 host loader；
+- 官方精选目录条目应指向
+  `https://github.com/seriousz158/dsh-codex-use/tree/main/packages/dsh-codex-appserver`，
+  不要把仓库根 workspace 当成可安装插件；
+- 当前不发布 npm 包，市场使用 GitHub `#path:/packages/dsh-codex-appserver` source 安装。
+
 ## 版本说明
 
-`0.1.0` 是首个 source/GitHub 导出版本。协议 schema 来自 Codex CLI `0.144.1`；如果
+`0.1.1` 增加官方 DSH Bundle 安装形态并保留旧版手工安装迁移。协议 schema 来自 Codex CLI `0.144.1`；如果
 Codex App Server 协议发生变化，应先更新 schema、fixture 和协议测试，再发布新版本。
