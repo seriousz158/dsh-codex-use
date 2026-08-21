@@ -149,7 +149,22 @@ window.__ModuleLoader__.load({
               ] }),
             ] });
           };
-          providerCtx.slots.inject("settings.plugin.item", () => providerCtx.slots.register({ name: "settings.plugin.item", key: "llm-codex-appserver", order: 31 }, CodexSettingsCard));
+          let fallbackSettingsCardDispose = null;
+          const pluginSlotDeclared = () => {
+            try { return typeof providerCtx.slots.entries === "function" && providerCtx.slots.entries("settings.plugin.item").length > 0; }
+            catch { return false; }
+          };
+          const registerFallbackSettingsCard = () => {
+            if (pluginSlotDeclared()) return () => {};
+            fallbackSettingsCardDispose = providerCtx.slots.register({ name: "settings.general.item", id: "codex-appserver-settings-fallback", order: 32 }, CodexSettingsCard);
+            return () => { fallbackSettingsCardDispose?.(); fallbackSettingsCardDispose = null; };
+          };
+          providerCtx.slots.inject("settings.plugin.item", () => {
+            fallbackSettingsCardDispose?.();
+            fallbackSettingsCardDispose = null;
+            return providerCtx.slots.register({ name: "settings.plugin.item", key: "llm-codex-appserver", order: 31 }, CodexSettingsCard);
+          });
+          providerCtx.slots.inject("settings.general.item", registerFallbackSettingsCard);
         }
       });
     } };

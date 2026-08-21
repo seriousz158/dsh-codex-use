@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { LlmError } from "@deepseek-ai/dsh-llm";
 import {
   CODEX_ERROR_CODES,
   CodexProviderError,
@@ -24,6 +25,20 @@ assert.equal(conflict.stage, "registration");
 assert.equal(conflict.action, "remove-duplicate-provider");
 assert.equal(conflict.retryable, false);
 assert.deepEqual(serializeCodexError({ code: "not-known" }, "timeout"), errorContext("timeout"));
+
+const attachmentFailure = new LlmError("attachment failed", "protocol-error");
+attachmentFailure.failure = Object.freeze({
+  ...attachmentFailure.failure,
+  stage: "attachment",
+  action: "check-attachment",
+  retryable: false,
+});
+assert.deepEqual(serializeCodexError(attachmentFailure), {
+  code: "protocol-error",
+  stage: "attachment",
+  action: "check-attachment",
+  retryable: false,
+});
 
 assert.equal(isExplicitReauthSignal({ result: { requiresOpenaiAuth: true } }), true);
 assert.equal(isExplicitReauthSignal({ error: { code: "authentication_required" } }), true);
