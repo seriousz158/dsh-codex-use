@@ -217,7 +217,7 @@ try {
 } catch (error) {
   corruptError = error;
 }
-assert.equal(corruptError?.code, "turn-failed", "threadmap implementation failures must not escape the provider's stable error contract");
+assert.equal(corruptError?.code, "threadmap-corrupt", "threadmap failures must keep their stable storage error code");
 
 const sharedThreadStore = new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-shared-thread-map-")), "threads.json"));
 for (const sessionId of ["shared-a", "shared-b"]) {

@@ -2,12 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { COMPATIBILITY, EXPECTED_CODEX_VERSION } from "./compatibility.js";
 
-export const EXPECTED_CODEX_VERSION = "0.144.1";
 export const PROVIDER = "codex-chatgpt";
 export const PROVIDER_NAME = "OpenAI Codex（ChatGPT）";
 export const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 export const MAX_NOTIFICATION_QUEUE = 512;
+export { COMPATIBILITY, EXPECTED_CODEX_VERSION };
 
 const protocolDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "protocol");
 const schemaCache = new Map();

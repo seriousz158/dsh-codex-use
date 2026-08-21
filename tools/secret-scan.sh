@@ -25,6 +25,7 @@ if rg -n --hidden \
 fi
 
 if [[ -n "${HOME:-}" ]] && rg -n --hidden \
+  --glob '!.git' \
   --glob '!.git/**' \
   --glob '!node_modules/**' \
   --glob '!tools/secret-scan.sh' \

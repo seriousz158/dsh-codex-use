@@ -5,6 +5,7 @@ import { LlmAdapter, LlmError } from "@deepseek-ai/dsh-llm";
 import { CodexRpc, CodexRpcError } from "./rpc.js";
 import { loadMemorySnapshot } from "./memory.js";
 import { ThreadMapStore } from "./threadmap.js";
+import { isExplicitReauthSignal, toLlmError } from "./errors.js";
 import {
   EXPECTED_CODEX_VERSION,
   MAX_NOTIFICATION_QUEUE,
@@ -31,20 +32,10 @@ const DEFAULT_CONFIG = Object.freeze({
   historyBootstrap: 20,
   rateLimitRefreshSec: 30,
   requestTimeoutMs: 600_000,
+  fastMode: false,
 });
 export const MAX_HISTORY_TRANSCRIPT_CHARS = 12_000;
 const HISTORY_TRUNCATION_PREFIX = "[Earlier conversation truncated]\n";
-const STABLE_PROVIDER_ERRORS = new Set([
-  "codex-not-found",
-  "protocol-mismatch",
-  "startup-failed",
-  "rate-limits-unavailable",
-  "turn-failed",
-  "turn-state-unknown",
-  "approval-denied",
-  "usage-unavailable",
-]);
-
 class AsyncMutex {
   tail = Promise.resolve();
   async acquire() {
@@ -119,6 +110,14 @@ function textOf(message) {
   return (message?.content ?? []).filter((block) => block.type === "text").map((block) => block.text).join("").trim();
 }
 
+function imageBlocksOf(message) {
+  return (message?.content ?? []).filter((block) => block?.type === "image");
+}
+
+function hasProviderInput(message) {
+  return Boolean(textOf(message) || imageBlocksOf(message).length > 0);
+}
+
 function isToolMessage(message) {
   return message?.source?.kind === "tool" || (message?.content ?? []).some((block) => block.type === "tool-result" || block.type === "tool-call");
 }
@@ -141,6 +140,10 @@ function userSequenceHash(messages) {
     hash.update("\0");
     hash.update(textOf(message));
     hash.update("\0");
+    for (const block of imageBlocksOf(message)) {
+      hash.update(String(block.attachment?.attachmentId ?? ""));
+      hash.update("\0");
+    }
   }
   return hash.digest("hex");
 }
@@ -152,6 +155,10 @@ function messageSequenceHash(messages) {
     hash.update("\0");
     hash.update(textOf(message));
     hash.update("\0");
+    for (const block of imageBlocksOf(message)) {
+      hash.update(String(block.attachment?.attachmentId ?? ""));
+      hash.update("\0");
+    }
   }
   return hash.digest("hex");
 }
@@ -175,15 +182,19 @@ function normalizeConfig(config = {}) {
   if (!Number.isInteger(next.historyBootstrap) || next.historyBootstrap < 0 || next.historyBootstrap > 100) throw new Error("llm-codex-appserver: historyBootstrap must be 0..100");
   if (!Number.isInteger(next.rateLimitRefreshSec) || next.rateLimitRefreshSec < 15 || next.rateLimitRefreshSec > 300) throw new Error("llm-codex-appserver: rateLimitRefreshSec must be 15..300");
   if (!Number.isInteger(next.requestTimeoutMs) || next.requestTimeoutMs < 30_000 || next.requestTimeoutMs > 1_800_000) throw new Error("llm-codex-appserver: requestTimeoutMs must be 30000..1800000");
+  if (typeof next.fastMode !== "boolean") throw new Error("llm-codex-appserver: fastMode must be boolean");
   return next;
 }
 
 function asLlmError(error, fallback = "turn-failed") {
-  if (error instanceof LlmError) return error;
+  if (error instanceof LlmError && error.failure?.stage) return error;
   const candidate = error?.code === "ENOENT" ? "codex-not-found" : error?.code;
-  const code = STABLE_PROVIDER_ERRORS.has(candidate) ? candidate : fallback;
-  const message = code === candidate ? error?.message ?? "Codex provider failed" : "Codex provider failed";
-  return new LlmError(message, code, { cause: error });
+  return toLlmError(error, typeof candidate === "string" ? candidate : fallback);
+}
+
+function attachmentError(message, cause, action = "check-attachment") {
+  const source = Object.assign(new Error(message), { code: "protocol-error" });
+  return toLlmError(source, "protocol-error", { stage: "attachment", action, retryable: false, cause });
 }
 
 export class CodexAppServerAdapter extends LlmAdapter {
@@ -194,6 +205,7 @@ export class CodexAppServerAdapter extends LlmAdapter {
     this.rpc = options.rpc ?? new CodexRpc({ codexBin: options.codexBin || "codex", logger: this.logger });
     this.threadmap = options.threadmap ?? new ThreadMapStore(options.threadmapPath);
     this.workspaceResolver = options.workspaceResolver;
+    this.attachments = options.attachments ?? null;
     this.memoryLoader = options.memoryLoader ?? loadMemorySnapshot;
     this.versionReader = options.versionReader ?? (async (bin, env) => {
       const { stdout, stderr } = await execFile(bin, ["--version"], { encoding: "utf8", env });
@@ -344,7 +356,7 @@ export class CodexAppServerAdapter extends LlmAdapter {
         if (response.error) throw new Error(response.error.message ?? "model/list failed");
         for (const model of response.result?.data ?? []) {
           this.modelDetails.set(String(model.id), model);
-          models.push({ provider, id: String(model.id), name: String(model.displayName ?? model.id), ...(typeof model.description === "string" ? { description: model.description } : {}), ...(Array.isArray(model.inputModalities) ? { inputModalities: model.inputModalities } : {}) });
+          models.push({ provider, id: String(model.id), name: String(model.displayName ?? model.id), ...(typeof model.description === "string" ? { description: model.description } : {}), ...(Array.isArray(model.inputModalities) ? { inputModalities: model.inputModalities } : {}), ...(Array.isArray(model.serviceTiers) ? { serviceTiers: model.serviceTiers } : {}) });
         }
         cursor = response.result?.nextCursor ?? null;
       } while (cursor !== null);
@@ -363,7 +375,11 @@ export class CodexAppServerAdapter extends LlmAdapter {
     this.accountReading = (async () => {
       await this.#ensureReady();
       const response = await this.rpc.request("account/read", {}, { timeoutMs: 15_000 });
-      if (response.error) throw new LlmError(response.error.message ?? "Codex account unavailable", "rate-limits-unavailable");
+      if (response.error) {
+        const code = isExplicitReauthSignal(response) ? "reauth-required" : "account-unavailable";
+        throw new LlmError(response.error.message ?? "Codex account unavailable", code);
+      }
+      if (isExplicitReauthSignal(response)) throw new LlmError("Codex account authentication is required", "reauth-required");
       this.accountRead = true;
     })();
     try { await this.accountReading; }
@@ -387,16 +403,43 @@ export class CodexAppServerAdapter extends LlmAdapter {
     this.rateLimitsLoading = (async () => {
       await this.#ensureAccountRead();
       const response = await this.rpc.request("account/rateLimits/read", {}, { timeoutMs: 15_000 });
-      if (response.error) throw new LlmError(response.error.message ?? "Codex rate limits unavailable", "rate-limits-unavailable");
+      if (response.error) {
+        const code = isExplicitReauthSignal(response) ? "reauth-required" : "rate-limits-unavailable";
+        throw new LlmError(response.error.message ?? "Codex rate limits unavailable", code);
+      }
       const buckets = Object.fromEntries(normalizeRateLimits(response.result).map((entry) => [entry.limitId, entry]));
-      this.lastRateLimits = Object.freeze({ updatedAt: new Date().toISOString(), buckets: Object.freeze(buckets) });
+      this.lastRateLimits = Object.freeze({
+        state: "available",
+        updatedAt: new Date().toISOString(),
+        source: "account/rateLimits/read",
+        buckets: Object.freeze(buckets),
+      });
       this.lastRateLimitsAt = Date.now();
       this.rateLimitsStale = false;
       this.#publishRateLimits();
       return this.lastRateLimits;
     })();
     try { return await this.rateLimitsLoading; }
-    catch (error) { throw asLlmError(error, "rate-limits-unavailable"); }
+    catch (error) {
+      const normalized = asLlmError(error, "rate-limits-unavailable");
+      const state = normalized.code === "reauth-required" ? "reauth-required" : this.lastRateLimits ? "stale" : "unavailable";
+      const previous = this.lastRateLimits;
+      const snapshot = Object.freeze({
+        state,
+        updatedAt: previous?.updatedAt ?? null,
+        source: previous?.source ?? "none",
+        buckets: Object.freeze(previous?.buckets ?? {}),
+        error: Object.freeze({
+          code: normalized.code,
+          retryable: normalized.failure?.retryable ?? true,
+        }),
+      });
+      this.lastRateLimits = snapshot;
+      this.lastRateLimitsAt = 0;
+      this.rateLimitsStale = true;
+      this.#publishRateLimits();
+      return snapshot;
+    }
     finally { this.rateLimitsLoading = null; }
   }
 
@@ -407,17 +450,35 @@ export class CodexAppServerAdapter extends LlmAdapter {
     if (typeof limitId !== "string" || !limitId) {
       this.rateLimitsStale = true;
       this.lastRateLimitsAt = 0;
+      if (this.lastRateLimits) {
+        this.lastRateLimits = Object.freeze({ ...this.lastRateLimits, state: "stale", error: Object.freeze({ code: "rate-limits-unavailable", retryable: true }) });
+        this.#publishRateLimits();
+      }
       return;
     }
     if (limitId !== "codex") return;
     if (!this.lastRateLimits) {
-      this.rateLimitsStale = true;
+      const first = { limitId, limitName: "Codex" };
+      this.lastRateLimits = Object.freeze({
+        state: "available",
+        updatedAt: new Date().toISOString(),
+        source: "notification",
+        buckets: Object.freeze({ codex: { ...mergeRateLimitSnapshot(first, patch), limitId, limitName: "Codex" } }),
+      });
+      this.lastRateLimitsAt = Date.now();
+      this.rateLimitsStale = false;
+      this.#publishRateLimits();
       return;
     }
     const buckets = { ...this.lastRateLimits.buckets };
     const previous = buckets[limitId] ?? { limitId, limitName: limitId };
     buckets[limitId] = { ...mergeRateLimitSnapshot(previous, patch), limitId, limitName: "Codex" };
-    this.lastRateLimits = Object.freeze({ updatedAt: new Date().toISOString(), buckets: Object.freeze(buckets) });
+    this.lastRateLimits = Object.freeze({
+      state: "available",
+      updatedAt: new Date().toISOString(),
+      source: "notification",
+      buckets: Object.freeze(buckets),
+    });
     this.lastRateLimitsAt = Date.now();
     this.rateLimitsStale = false;
     this.#publishRateLimits();
@@ -503,6 +564,45 @@ export class CodexAppServerAdapter extends LlmAdapter {
     throw new LlmError("Codex turn state unknown; refusing to resubmit", "turn-state-unknown");
   }
 
+  async #imageInput(block, signal) {
+    const reference = block?.attachment;
+    if (!reference || typeof reference !== "object" || typeof reference.attachmentId !== "string" || !reference.mediaType) {
+      throw attachmentError("Codex image input must reference a DSH attachment");
+    }
+    if (typeof this.attachments?.readImage !== "function") {
+      throw attachmentError("DSH attachment storage is unavailable", undefined, "enable-attachment-store");
+    }
+    let stored;
+    try {
+      stored = await this.attachments.readImage(reference, signal);
+    } catch (error) {
+      throw attachmentError(`Codex image attachment could not be read: ${error.message}`, error);
+    }
+    const data = stored?.data;
+    const mediaType = stored?.ref?.mediaType ?? reference.mediaType;
+    if (!(data instanceof Uint8Array) || typeof mediaType !== "string" || !/^image\/(?:png|jpe?g|webp|gif)$/.test(mediaType)) {
+      throw attachmentError("DSH attachment returned invalid image bytes");
+    }
+    return { type: "image", url: `data:${mediaType};base64,${Buffer.from(data).toString("base64")}` };
+  }
+
+  async #buildInputs(messages, signal) {
+    const inputs = [];
+    const messageIds = [];
+    for (const message of messages) {
+      for (const block of message?.content ?? []) {
+        if (block?.type === "text" && typeof block.text === "string" && block.text.length > 0) {
+          inputs.push({ type: "text", text: block.text });
+          messageIds.push(String(message.id ?? ""));
+        } else if (block?.type === "image") {
+          inputs.push(await this.#imageInput(block, signal));
+          messageIds.push(String(message.id ?? ""));
+        }
+      }
+    }
+    return { inputs, messageIds };
+  }
+
   async *stream(options) {
     const sessionId = String(options.sessionId ?? "anonymous");
     const releaseSession = await this.#lockFor(this.sessionLocks, sessionId).acquire();
@@ -525,9 +625,19 @@ export class CodexAppServerAdapter extends LlmAdapter {
     await this.#ensureReady();
     const cwd = this.#workspace(options, sessionId);
     const messages = Array.isArray(options.messages) ? options.messages : [];
-    const userMessages = messages.filter((message) => message.role === "user" && !isToolMessage(message) && textOf(message));
+    const userMessages = messages.filter((message) => message.role === "user" && !isToolMessage(message) && hasProviderInput(message));
     const latest = userMessages.at(-1);
     if (!latest) throw new LlmError("Codex turn has no user message", "turn-failed");
+    let serviceTier;
+    const hasImages = userMessages.some((message) => imageBlocksOf(message).length > 0);
+    if (config.fastMode === true || hasImages) {
+      await this.listModels(PROVIDER);
+      const model = this.modelDetails.get(String(options.model));
+      if (Array.isArray(model?.serviceTiers) && model.serviceTiers.some((tier) => (typeof tier === "string" ? tier : tier?.id) === "priority")) serviceTier = "priority";
+      if (hasImages && (!Array.isArray(model?.inputModalities) || !model.inputModalities.includes("image"))) {
+        throw attachmentError("Selected Codex model does not advertise image input", undefined, "select-image-capable-model");
+      }
+    }
     let entry = options.purpose ? null : await this.#loadThreadEntry(sessionId, config);
     let recoveredCompletedWithoutUsage = false;
     let recoveredRunning = false;
@@ -582,12 +692,15 @@ export class CodexAppServerAdapter extends LlmAdapter {
       yield { type: "finish", reason: { kind: "stop" } };
       return;
     }
-    const inputs = recoveredRunning ? [] : newThread
-      ? [{ type: "text", text: textOf(latest) }]
-      : newUsers.map((message) => ({ type: "text", text: textOf(message) }));
+    const builtInputs = recoveredRunning ? { inputs: [], messageIds: [] } : await this.#buildInputs(newThread ? [latest] : newUsers, options.signal);
+    const inputs = builtInputs.inputs;
     if (newThread) {
       const transcript = historyTranscript(historyBeforeLatest, config.historyBootstrap);
-      if (transcript) inputs[0].text = `${transcript}\n\nCurrent request:\n${inputs[0].text}`;
+      if (transcript) {
+        const firstText = inputs.findIndex((input) => input.type === "text");
+        if (firstText >= 0) inputs[firstText].text = `${transcript}\n\nCurrent request:\n${inputs[firstText].text}`;
+        else { inputs.unshift({ type: "text", text: `${transcript}\n\nCurrent request:` }); builtInputs.messageIds.unshift(String(latest.id ?? "")); }
+      }
     }
     let threadId = entry?.threadId;
     const ephemeral = config.ephemeralThreads === true || Boolean(options.purpose);
@@ -608,7 +721,7 @@ export class CodexAppServerAdapter extends LlmAdapter {
     const nextCheckpointHash = userSequenceHash(userMessages);
     const inFlight = recoveredRunning
       ? entry.inFlight
-      : { state: "starting", turnId: null, messageIds: inputs.map((_, index) => String((newThread ? [latest] : newUsers)[index]?.id ?? latest.id)), clientUserMessageId: String(latest.id), checkpointUserHash: nextCheckpointHash, startedAt: new Date().toISOString() };
+      : { state: "starting", turnId: null, messageIds: builtInputs.messageIds, clientUserMessageId: String(latest.id), checkpointUserHash: nextCheckpointHash, startedAt: new Date().toISOString() };
     let persisted = entry;
     if (!options.purpose && !recoveredRunning) {
       persisted = await this.#saveThreadEntry(sessionId, {
@@ -635,6 +748,7 @@ export class CodexAppServerAdapter extends LlmAdapter {
           approvalPolicy: "never",
           cwd,
           sandboxPolicy: sandboxPolicy(config.sandbox, cwd),
+          ...(serviceTier ? { serviceTier } : {}),
           ...(memory.text ? { additionalContext: { "dpsk-memory": { kind: "untrusted", value: memory.text } } } : {}),
         }, { signal: options.signal, timeoutMs: config.requestTimeoutMs });
       } catch (error) {

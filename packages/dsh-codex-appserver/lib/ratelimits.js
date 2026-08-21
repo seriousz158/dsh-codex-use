@@ -1,7 +1,11 @@
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+import { serializeCodexError } from "./errors.js";
 
 function success(value) { return Object.freeze({ ok: true, value: Object.freeze(value) }); }
-function failure(code) { return Object.freeze({ ok: false, error: Object.freeze({ code }) }); }
+function failure(error) {
+  const context = serializeCodexError(typeof error === "string" ? { code: error } : error, "rate-limits-unavailable");
+  return Object.freeze({ ok: false, error: Object.freeze(context) });
+}
 
 const REMOTE_INITIALIZERS = [];
 const decorate = (ctor, name, decorator) => {
@@ -22,7 +26,7 @@ export class CodexAppServerService extends TypertRemoteService {
   async status() {
     if (!this.adapter) return failure("startup-failed");
     const status = await this.adapter.status();
-    return status.available ? success(status) : failure(status.code);
+    return status.available ? success(status) : failure(status);
   }
 
   async rateLimits(request) {
@@ -32,7 +36,7 @@ export class CodexAppServerService extends TypertRemoteService {
       this.snapshot = snapshot;
       return success(snapshot);
     } catch (error) {
-      return failure(error?.code ?? "rate-limits-unavailable");
+      return failure(error ?? "rate-limits-unavailable");
     }
   }
 }

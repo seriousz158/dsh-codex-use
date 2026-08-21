@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "pluginVersion": "0.2.2",
+  "node": {
+    "minimum": ">=22"
+  },
+  "dsh": {
+    "supported": ">=0.1.0-rc.7 <0.2.0-0",
+    "verified": [
+      "0.1.0-rc.7"
+    ]
+  },
+  "codex": {
+    "cliVersion": "0.144.1",
+    "protocol": "v2",
+    "schemaFile": "lib/protocol/codex_app_server_protocol.v2.schemas.json",
+    "schemaSha256": "5c6886f419036d2e09aab72598b94c5bf09250e850ae067cdb7179f8a22f5065"
+  },
+  "capabilities": {
+    "doctorOffline": true,
+    "doctorLive": true,
+    "settingsCard": true,
+    "fastMode": true,
+    "localImageInput": true,
+    "search": false,
+    "imageGeneration": false
+  }
+}
