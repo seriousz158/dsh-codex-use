@@ -2,16 +2,18 @@
 
 ## 状态
 
-实现已落地，Phase 1/2 的静态、协议回放、安装 smoke 与本机 Web UI
+实现已落地，Bundle manifest、Phase 1/2 的静态、协议回放、安装 smoke 与本机 Web UI
 smoke 已完成（2026-08-21）。这里的“完成”不包含真实模型请求或付费额度消耗；
 这两项仍由显式的 live gate 控制。
 
-当前注册边界是一个故意的单一事实源：
+当前注册边界按安装通道隔离：
 
-- `.dsh/cordis.patch.yml` 是共享 host patch，唯一注册
-  `codex-appserver` / `dsh-codex-appserver`。
-- `.dsh/profiles/web/cordis.patch.yml` 保持 `[]`。Web 会继承共享 host patch；
-  再在 Web patch 注册同一个 id 会触发 rc.7 的 duplicate loader entry。
+- 官方 Bundle 通道从 `packages/dsh-codex-appserver/package.json` 的
+  `dsh.bundle.patch` 读取 `packages/dsh-codex-appserver/cordis.patch.yml`，在
+  `dsh.profile.bundles` 中挂载唯一的 `codex-appserver` loader。
+- 旧手工通道使用共享 `$DSH_HOME/cordis.patch.yml` 的
+  `codex-appserver-manual` 条目；当 Bundle 已加载时，该条目由 `!!js` guard 自动禁用。
+- 旧版 `codex-appserver` 条目由安装器备份后迁移；Web patch 不得再插入任何同名 loader。
 - 2026-08-21 本机 Web smoke 已确认 HTTP 200，设置页出现 Codex Provider/额度；
   该 smoke 没有发送模型请求。
 
@@ -64,13 +66,11 @@ provider（另有 pi-ai 多 provider 桥）。本机 Codex CLI 已通过 ChatGPT
 - **取消**：`GenerateOptions.signal`（AbortSignal），adapter 必须遵守。
 - **粒度错配的处理空间**：adapter 可以在一次 `stream()` 内跑完整个外部
   turn，只要**不向外 yield `tool-call` 块**，DSH 就不会尝试执行任何工具。
-- **插件免改宿主加载**：`$DSH_HOME/profiles/<name>/` +
-  `profiles/node_modules/<name>` 软链 + `$DSH_HOME/cordis.patch.yml` 的
-  `insert` 追加（boot 链路 `dsh/lib/profile-boot-*.js`；patch 语义
-  `dsh-app-boot/lib/index.js:57-106`）。本机 `dsh-memory` 插件即此模式，
-  路径已走通。对于 Codex，host patch 是共享注册入口，Web patch 必须保持空，
-  否则 rc.7 会拒绝重复 loader id。host 包的 peer 依赖（dsh-llm、cordis 等）由
-  `healProfilesModuleFallback()` 自动软链到宿主同一份实例。
+- **插件免改宿主加载**：官方路径是 `dsh plugin --profile <name> add`；CLI
+  将包写入 profile 依赖并把声明 `dsh.bundle` 的包追加到
+  `dsh.profile.bundles`。Bundle patch 在 profile 层加载，Web patch 只保留用户覆写。
+  旧版安装器仍提供共享 host patch 兼容路径，并带迁移/重复保护。host 包的 peer
+  依赖（dsh-llm、cordis 等）由 `healProfilesModuleFallback()` 自动软链到宿主同一份实例。
 - **设置与凭证**：provider 插件惯例 `installSettingsSection(ctx, ns,
   Config, ...)`（`dsh-settings`），用户配置落在 `$DSH_HOME/settings.yaml`
   同名 section，热更新；凭证经 `ctx.credentials` 引用（本方案不需要新凭证）。
@@ -136,15 +136,13 @@ session 持久化全部复用现有机制。AgentFactory 留作远期选项。
 
 - 开发位置：本仓库 `packages/dsh-codex-appserver/`（单包，含 host 面
   `lib/index.js` 与客户端面 `lib/client.js`，package.json 声明
-  `dsh.client` 与 `./client` 导出；若客户端 bundling 有障碍再拆成
+  `dsh.bundle`、`dsh.client`、`./cordis.patch.yml` 与 `./client` 导出；若客户端 bundling 有障碍再拆成
   `dsh-codex-appserver-ui`，仿 `dsh-memory`/`dsh-memory-ui` 双包先例）。
-- 安装：`bin/dsh-codex-install`（幂等脚本）建立
-  `.dsh/profiles/node_modules/dsh-codex-appserver -> ../../../packages/dsh-codex-appserver`
-  软链（相对路径基准是 `.dsh/profiles/node_modules`），并确保共享
-  `.dsh/cordis.patch.yml` 只有一个
-  `- insert: [{id: codex-appserver, name: dsh-codex-appserver}]` 注册。
-  Web patch 保持 `[]`，不得追加重复条目。
-- 卸载即移除软链与 patch 条目，宿主包与 DeepSeek 配置不受影响。
+- 安装：推荐 `dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh-codex-appserver`；
+  旧版 `bin/dsh-codex-install`（幂等脚本）才建立
+  `.dsh/profiles/node_modules/dsh-codex-appserver` 软链和共享 patch 条目。
+- 卸载 Bundle 使用 `dsh plugin --profile web remove dsh-codex-appserver`；旧版手工
+  通道仍需按安装器输出的 patch 备份和迁移说明处理。两条通道不可同时插入同一个 active loader。
 
 ### 决策 4：额度数据只展示官方字段，失败明确标记
 
