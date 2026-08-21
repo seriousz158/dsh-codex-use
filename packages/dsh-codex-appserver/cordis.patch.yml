@@ -1,0 +1,8 @@
+# dsh-codex-appserver bundle patch.
+#
+# The official `dsh plugin --profile <name> add ...` command discovers this
+# manifest through package.json and mounts the host provider. The browser
+# half is injected by the `dsh.client` manifest in the same package.json.
+- insert:
+    - id: codex-appserver
+      name: dsh-codex-appserver
