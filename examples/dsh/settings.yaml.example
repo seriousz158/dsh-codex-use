@@ -1,0 +1,12 @@
+# Optional provider settings. The defaults are intentionally conservative.
+llm-codex-appserver:
+  sandbox: workspace-write
+  approvalPolicy: never
+  ephemeralThreads: true
+  injectMemory: false
+  historyBootstrap: 20
+  rateLimitRefreshSec: 30
+  requestTimeoutMs: 600000
+
+# The installer does not change agent-default-model. DeepSeek remains the
+# default until the user explicitly selects provider codex-chatgpt in DSH.

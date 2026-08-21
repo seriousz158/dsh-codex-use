@@ -1,0 +1,12 @@
+node_modules/
+.dsh/
+.env
+.env.*
+*.log
+*.zstd
+*.pem
+*.key
+.DS_Store
+coverage/
+.playwright-cli/
+packages/dsh-codex-appserver/node_modules

@@ -1,0 +1,106 @@
+#!/bin/zsh
+set -euo pipefail
+
+# Install the standalone plugin into an existing DSH_HOME without copying the
+# host runtime, credentials, sessions, or stored memory into this repository.
+REPO_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd -P)"
+DSH_HOME_VALUE="${DSH_HOME:-$HOME/.dsh}"
+PACKAGE_DIR="$REPO_DIR/packages/dsh-codex-appserver"
+PROFILE_NODE_MODULES="$DSH_HOME_VALUE/profiles/node_modules"
+PROFILE_LINK="$PROFILE_NODE_MODULES/dsh-codex-appserver"
+PACKAGE_LINK="$PACKAGE_DIR/node_modules"
+PACKAGE_NODE_MODULES_TARGET="$PROFILE_NODE_MODULES"
+HOST_PATCH="$DSH_HOME_VALUE/cordis.patch.yml"
+WEB_PATCH="$DSH_HOME_VALUE/profiles/web/cordis.patch.yml"
+
+die() {
+  print -u2 -- "dsh-codex-install: $*"
+  exit 1
+}
+
+[[ "$DSH_HOME_VALUE" = /* ]] || die "DSH_HOME must be an absolute path: $DSH_HOME_VALUE"
+[[ -f "$PACKAGE_DIR/package.json" ]] || die "plugin package is missing: $PACKAGE_DIR"
+
+mkdir -p "$PROFILE_NODE_MODULES"
+
+if [[ -e "$HOST_PATCH" && ! -f "$HOST_PATCH" ]]; then
+  die "shared host patch is not a regular file: $HOST_PATCH"
+fi
+if [[ ! -e "$HOST_PATCH" ]]; then
+  umask 077
+  print -r -- '[]' > "$HOST_PATCH"
+fi
+
+ensure_link() {
+  local link="$1"
+  local target="$2"
+  local expected actual
+  expected="$(cd -P -- "$target" && pwd -P)" || die "target does not resolve: $target"
+  if [[ -L "$link" ]]; then
+    actual="$(cd -P -- "$link" && pwd -P)" || die "link target does not resolve: $link"
+    [[ "$actual" == "$expected" ]] || die "refusing to replace unexpected link: $link -> $actual"
+    return
+  fi
+  [[ ! -e "$link" ]] || die "refusing to replace existing path: $link"
+  ln -s "$target" "$link"
+}
+
+registration_count() {
+  local patch="$1"
+  local needle="$2"
+  grep -Fc -- "$needle" "$patch" || true
+}
+
+append_host_registration() {
+  local temporary
+  temporary="$(mktemp "${HOST_PATCH}.tmp.XXXXXX")"
+  {
+    cat "$HOST_PATCH"
+    print ''
+    print -r -- '- insert:'
+    print '    - id: codex-appserver'
+    print '      name: dsh-codex-appserver'
+  } > "$temporary"
+  chmod 600 "$temporary"
+  mv "$temporary" "$HOST_PATCH"
+}
+
+ensure_link "$PROFILE_LINK" "$PACKAGE_DIR"
+if [[ -L "$PACKAGE_LINK" ]]; then
+  package_link_actual="$(cd -P -- "$PACKAGE_LINK" && pwd -P)" || die "link target does not resolve: $PACKAGE_LINK"
+  package_link_expected="$(cd -P -- "$PACKAGE_NODE_MODULES_TARGET" && pwd -P)" || die "target does not resolve: $PACKAGE_NODE_MODULES_TARGET"
+  if [[ "$package_link_actual" != "$package_link_expected" ]]; then
+    [[ "$package_link_actual" == */profiles/node_modules ]] || die "refusing to replace unexpected package dependency link: $PACKAGE_LINK -> $package_link_actual"
+    ln -sfn "$PACKAGE_NODE_MODULES_TARGET" "$PACKAGE_LINK"
+  fi
+else
+  ensure_link "$PACKAGE_LINK" "$PACKAGE_NODE_MODULES_TARGET"
+fi
+
+host_ids="$(registration_count "$HOST_PATCH" 'id: codex-appserver')"
+host_names="$(registration_count "$HOST_PATCH" 'name: dsh-codex-appserver')"
+web_ids=0
+web_names=0
+if [[ -f "$WEB_PATCH" ]]; then
+  web_ids="$(registration_count "$WEB_PATCH" 'id: codex-appserver')"
+  web_names="$(registration_count "$WEB_PATCH" 'name: dsh-codex-appserver')"
+fi
+
+if (( host_ids > 1 || host_names > 1 || web_ids > 1 || web_names > 1 )); then
+  die "duplicate codex-appserver registration; keep at most one shared-host entry"
+fi
+if (( host_ids == 1 && host_names == 0 )) || (( host_ids == 0 && host_names == 1 )); then
+  die "shared host patch has an incomplete codex-appserver registration"
+fi
+if (( web_ids == 1 || web_names == 1 )); then
+  die "Web patch must not duplicate the shared codex-appserver registration: $WEB_PATCH"
+fi
+
+if (( host_ids == 0 )); then
+  append_host_registration
+fi
+
+print "dsh-codex-appserver installed from $REPO_DIR"
+print "DSH_HOME=$DSH_HOME_VALUE"
+print "Shared host registration: $HOST_PATCH"
+print "Restart DSH to load the provider; select provider codex-chatgpt in the UI."

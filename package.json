@@ -1,0 +1,33 @@
+{
+  "name": "dsh-codex-use",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAI Codex App Server provider for DeepSeek Harness",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/dsh-codex-appserver"
+  ],
+  "scripts": {
+    "scan:secrets": "zsh tools/secret-scan.sh",
+    "test:adapter": "node tests/test_dsh_codex_appserver_adapter.mjs",
+    "test:contracts": "node tests/test_dsh_codex_appserver_adapter_contracts.mjs",
+    "test:probe": "node tests/test_dsh_codex_appserver_probe.mjs",
+    "test:rpc": "node tests/test_dsh_codex_appserver_rpc.mjs",
+    "test:threadmap": "node tests/test_dsh_codex_appserver_threadmap.mjs",
+    "test:ui": "node tests/test_dsh_codex_appserver_ui.mjs",
+    "test:install": "zsh tests/test_dsh_codex_appserver_install.sh",
+    "test:syntax": "node --check packages/dsh-codex-appserver/lib/index.js && node --check packages/dsh-codex-appserver/lib/adapter.js && node --check packages/dsh-codex-appserver/lib/rpc.js",
+    "test": "npm run scan:secrets && npm run test:adapter && npm run test:contracts && npm run test:probe && npm run test:rpc && npm run test:threadmap && npm run test:ui && npm run test:install && npm run test:syntax"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-settings": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.7",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "react": "18.3.1"
+  }
+}

@@ -1,0 +1,6 @@
+# The installer adds this entry to $DSH_HOME/cordis.patch.yml.
+# Do not add the same id to profiles/web/cordis.patch.yml: the shared host
+# patch is inherited by the Web profile and a duplicate id prevents startup.
+- insert:
+    - id: codex-appserver
+      name: dsh-codex-appserver
