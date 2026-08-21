@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-appserver",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "OpenAI Codex ChatGPT App Server provider for DeepSeek Harness",
   "type": "module",

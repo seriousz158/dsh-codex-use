@@ -4,7 +4,7 @@ import test from "node:test";
 
 import { Config, NS } from "../packages/dsh-codex-appserver/lib/index.js";
 
-test("0.2.0 settings keep the safe defaults and do not expose Fast Mode yet", () => {
+test("0.2.x settings keep the safe defaults and expose only the gated Fast Mode switch", () => {
   assert.equal(NS, "llm-codex-appserver");
   assert.deepEqual(Config({}), {
     codexBin: "",
