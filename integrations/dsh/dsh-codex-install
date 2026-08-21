@@ -12,6 +12,10 @@ PACKAGE_LINK="$PACKAGE_DIR/node_modules"
 PACKAGE_NODE_MODULES_TARGET="$PROFILE_NODE_MODULES"
 HOST_PATCH="$DSH_HOME_VALUE/cordis.patch.yml"
 WEB_PATCH="$DSH_HOME_VALUE/profiles/web/cordis.patch.yml"
+LEGACY_ID="codex-appserver"
+MANUAL_ID="codex-appserver-manual"
+
+DUPLICATE_GUARD="[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-appserver' && !e.disabled)"
 
 die() {
   print -u2 -- "dsh-codex-install: $*"
@@ -48,7 +52,36 @@ ensure_link() {
 registration_count() {
   local patch="$1"
   local needle="$2"
-  grep -Fc -- "$needle" "$patch" || true
+  if [[ "$needle" == id:\ * ]]; then
+    grep -Ec -- "^[[:space:]-]*${needle}$" "$patch" || true
+  else
+    grep -Fc -- "$needle" "$patch" || true
+  fi
+}
+
+migrate_legacy_registration() {
+  local temporary backup
+  backup="$(mktemp "${HOST_PATCH}.bak.XXXXXX")"
+  chmod 600 "$backup"
+  cp -- "$HOST_PATCH" "$backup"
+  temporary="$(mktemp "${HOST_PATCH}.migration.XXXXXX")"
+  chmod 600 "$temporary"
+  HOST_PATCH="$HOST_PATCH" TEMPORARY="$temporary" python3 - <<'PY'
+from pathlib import Path
+import os
+
+path = Path(os.environ["HOST_PATCH"])
+temporary = Path(os.environ["TEMPORARY"])
+text = path.read_text()
+old = "- insert:\n    - id: codex-appserver\n      name: dsh-codex-appserver"
+new = "- insert:\n    - id: codex-appserver-manual\n      name: dsh-codex-appserver\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-appserver' && !e.disabled)\""
+if text.count(old) != 1:
+    raise SystemExit("legacy registration is not the exact migration shape")
+temporary.write_text(text.replace(old, new, 1))
+PY
+  mv "$temporary" "$HOST_PATCH"
+  print "Migrated legacy $LEGACY_ID registration to $MANUAL_ID"
+  print "Backup: $backup"
 }
 
 append_host_registration() {
@@ -58,8 +91,9 @@ append_host_registration() {
     cat "$HOST_PATCH"
     print ''
     print -r -- '- insert:'
-    print '    - id: codex-appserver'
+    print "    - id: $MANUAL_ID"
     print '      name: dsh-codex-appserver'
+    print -r -- "      disabled: !!js \"$DUPLICATE_GUARD\""
   } > "$temporary"
   chmod 600 "$temporary"
   mv "$temporary" "$HOST_PATCH"
@@ -77,26 +111,33 @@ else
   ensure_link "$PACKAGE_LINK" "$PACKAGE_NODE_MODULES_TARGET"
 fi
 
-host_ids="$(registration_count "$HOST_PATCH" 'id: codex-appserver')"
-host_names="$(registration_count "$HOST_PATCH" 'name: dsh-codex-appserver')"
+legacy_ids="$(registration_count "$HOST_PATCH" "id: $LEGACY_ID")"
+legacy_names="$(registration_count "$HOST_PATCH" 'name: dsh-codex-appserver')"
+if (( legacy_ids > 0 )); then
+  if (( legacy_ids != 1 || legacy_names < 1 )); then
+    die "legacy codex-appserver registration is incomplete; edit $HOST_PATCH before retrying"
+  fi
+  migrate_legacy_registration
+fi
+
+manual_ids="$(registration_count "$HOST_PATCH" "id: $MANUAL_ID")"
+manual_names="$(registration_count "$HOST_PATCH" 'name: dsh-codex-appserver')"
 web_ids=0
 web_names=0
 if [[ -f "$WEB_PATCH" ]]; then
-  web_ids="$(registration_count "$WEB_PATCH" 'id: codex-appserver')"
+  web_ids="$(registration_count "$WEB_PATCH" "id: $LEGACY_ID")"
+  web_ids=$(( web_ids + $(registration_count "$WEB_PATCH" "id: $MANUAL_ID") ))
   web_names="$(registration_count "$WEB_PATCH" 'name: dsh-codex-appserver')"
 fi
 
-if (( host_ids > 1 || host_names > 1 || web_ids > 1 || web_names > 1 )); then
-  die "duplicate codex-appserver registration; keep at most one shared-host entry"
+if (( manual_ids > 1 || manual_names > 1 || web_ids > 0 || web_names > 0 )); then
+  die "duplicate codex-appserver registration; keep only the bundle row or one shared-host row"
 fi
-if (( host_ids == 1 && host_names == 0 )) || (( host_ids == 0 && host_names == 1 )); then
+if (( manual_ids == 1 && manual_names == 0 )) || (( manual_ids == 0 && manual_names == 1 )); then
   die "shared host patch has an incomplete codex-appserver registration"
 fi
-if (( web_ids == 1 || web_names == 1 )); then
-  die "Web patch must not duplicate the shared codex-appserver registration: $WEB_PATCH"
-fi
 
-if (( host_ids == 0 )); then
+if (( manual_ids == 0 )); then
   append_host_registration
 fi
 
