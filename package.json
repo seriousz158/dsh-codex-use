@@ -13,6 +13,7 @@
   "scripts": {
     "scan:secrets": "zsh tools/secret-scan.sh",
     "validate:bundle": "node tools/validate-dsh-bundle.mjs",
+    "test:host-surface": "node tools/check-dsh-host-surface.mjs --json",
     "test:adapter": "node tests/test_dsh_codex_appserver_adapter.mjs",
     "test:contracts": "node tests/test_dsh_codex_appserver_adapter_contracts.mjs",
     "test:probe": "node tests/test_dsh_codex_appserver_probe.mjs",
