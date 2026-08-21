@@ -5,9 +5,10 @@ import { promisify } from "node:util";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { EXPECTED_CODEX_VERSION } from "../packages/dsh-codex-appserver/lib/compatibility.js";
 
 const execFile = promisify(execFileCallback);
-export const EXPECTED_CODEX_VERSION = "0.144.1";
+export { EXPECTED_CODEX_VERSION };
 export const PROBE_METHODS = Object.freeze(new Set([
   "initialize",
   "initialized",
