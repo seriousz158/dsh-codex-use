@@ -17,6 +17,7 @@ const files = new Set(pack[0]?.files?.map(({ path }) => path));
 for (const required of [
   "package.json",
   "README.md",
+  "compatibility.json",
   "cordis.patch.yml",
   "lib/index.js",
   "lib/client.js",
