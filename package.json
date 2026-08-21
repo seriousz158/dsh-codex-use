@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-use",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "OpenAI Codex App Server provider for DeepSeek Harness",
   "type": "module",
@@ -15,12 +15,13 @@
     "test:adapter": "node tests/test_dsh_codex_appserver_adapter.mjs",
     "test:contracts": "node tests/test_dsh_codex_appserver_adapter_contracts.mjs",
     "test:probe": "node tests/test_dsh_codex_appserver_probe.mjs",
+    "test:manifest": "node tests/test_dsh_codex_appserver_manifest.mjs",
     "test:rpc": "node tests/test_dsh_codex_appserver_rpc.mjs",
     "test:threadmap": "node tests/test_dsh_codex_appserver_threadmap.mjs",
     "test:ui": "node tests/test_dsh_codex_appserver_ui.mjs",
     "test:install": "zsh tests/test_dsh_codex_appserver_install.sh",
     "test:syntax": "node --check packages/dsh-codex-appserver/lib/index.js && node --check packages/dsh-codex-appserver/lib/adapter.js && node --check packages/dsh-codex-appserver/lib/rpc.js",
-    "test": "npm run scan:secrets && npm run test:adapter && npm run test:contracts && npm run test:probe && npm run test:rpc && npm run test:threadmap && npm run test:ui && npm run test:install && npm run test:syntax"
+    "test": "npm run scan:secrets && npm run test:manifest && npm run test:adapter && npm run test:contracts && npm run test:probe && npm run test:rpc && npm run test:threadmap && npm run test:ui && npm run test:install && npm run test:syntax"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",

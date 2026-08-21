@@ -1,17 +1,29 @@
 {
   "name": "dsh-codex-appserver",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "OpenAI Codex ChatGPT App Server provider for DeepSeek Harness",
   "type": "module",
   "main": "./lib/index.js",
+  "types": "./lib/types/index.d.ts",
+  "scripts": {
+    "build": "node --check lib/index.js && node --check lib/client.js && node --check lib/adapter.js && node --check lib/rpc.js",
+    "prepack": "npm run build"
+  },
   "exports": {
-    ".": "./lib/index.js",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./protocol": "./lib/protocol.js",
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
@@ -23,11 +35,17 @@
       "platform": "web"
     }
   },
+  "files": [
+    "README.md",
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-typert-protocol": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": ">=0.1.0-rc.6 <0.2.0-0",
+    "@deepseek-ai/dsh-settings": ">=0.1.0-rc.6 <0.2.0-0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.1.0-rc.6 <0.2.0-0",
     "@deepseek-ai/schemastery": "^3.18.1",
     "react": "^18.2.0"
   },
