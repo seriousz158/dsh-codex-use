@@ -21,6 +21,6 @@ jobs:
         run: npm test
       - name: Validate bundle package contents
         run: |
-          npm pack --dry-run --workspace packages/dsh-codex-appserver | tee /tmp/dsh-codex-pack.txt
+          npm pack --dry-run --workspace packages/dsh-codex-appserver 2>&1 | tee /tmp/dsh-codex-pack.txt
           grep -Fq 'cordis.patch.yml' /tmp/dsh-codex-pack.txt
           grep -Fq 'lib/index.js' /tmp/dsh-codex-pack.txt
