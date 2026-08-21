@@ -33,19 +33,23 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 - 额度行只展示 Codex 官方 `account/rateLimits/read` 数据；读取失败时明确显示不可用，不估算额度。
 - 插件不会读取或复制 `~/.codex/auth.json`，登录态由 Codex CLI 管理。
 - 不做静默降级或自动切换到 DeepSeek。
+- Fast Mode 仅在 `model/list` 声明 `serviceTiers.priority` 时发送 `turn/start.serviceTier`。
+- 本地图片只接受 DSH attachment；远程 URL、任意路径和图片生成默认关闭。
+- `packages/dsh-codex-search` 是独立且默认关闭的 `codex-search` Bundle，带 SSRF/DNS/MIME/大小边界。
+- OAuth 不在本插件实现，保持独立的 `dsh-codex-oauth` 路线。
 
 ## 兼容性
 
 | 组件 | 版本/要求 |
 | --- | --- |
 | Node.js | `>=22` |
-| DSH | `0.1.0-rc.6` 及以上兼容范围；CI 使用 `0.1.0-rc.7` |
+| DSH | `>=0.1.0-rc.7 <0.2.0-0`；已验证 `0.1.0-rc.7` |
 | Codex CLI | `0.144.1` |
 | 运行环境 | macOS + zsh（安装脚本） |
 
 ## 旧版手工安装迁移
 
-`integrations/dsh/dsh-codex-install` 仍保留给 DSH `rc.6` 及以上的开发调试场景。它使用共享
+`integrations/dsh/dsh-codex-install` 仍保留给 DSH `rc.7` 的开发调试场景。它使用共享
 `$DSH_HOME/cordis.patch.yml`，写入 `codex-appserver-manual` 条目；当 Bundle 已存在时，
 该条目会自动禁用，因此不会与官方 Bundle 重复挂载。
 
@@ -158,5 +162,5 @@ npm run scan:secrets
 
 ## 版本说明
 
-`0.1.1` 增加官方 DSH Bundle 安装形态并保留旧版手工安装迁移。协议 schema 来自 Codex CLI `0.144.1`；如果
+`0.2.x` 增加官方 DSH Bundle、doctor、revision-fenced 设置卡、额度状态模型、Fast Mode 和本地图片输入，并保留旧版手工安装迁移。协议 schema 来自 Codex CLI `0.144.1`；如果
 Codex App Server 协议发生变化，应先更新 schema、fixture 和协议测试，再发布新版本。

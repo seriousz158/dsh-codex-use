@@ -16,8 +16,20 @@ bundle patch mounts the host provider; the client manifest injects the UI.
 ## Compatibility
 
 - Node.js `>=22`
-- DSH `0.1.0-rc.6` through the current `0.1.x` line
+- DSH `>=0.1.0-rc.7 <0.2.0-0` (verified on `0.1.0-rc.7`)
 - Codex CLI `0.144.1` App Server protocol fixtures
+
+The standalone doctor is metadata-only by default:
+
+```sh
+node tools/codex-appserver-doctor.mjs --json
+node tools/codex-appserver-doctor.mjs --json --live
+```
+
+The browser half exposes a revision-fenced `settings.plugin.item` card. The
+quota row remains in `settings.general.item`; Fast Mode is capability-gated and
+local images are read only through DSH attachments. OAuth and remote search are
+separate routes (`dsh-codex-search` is disabled by default).
 
 The repository root contains the full installation guide, tests, security
 boundary, and legacy manual-installer migration instructions.

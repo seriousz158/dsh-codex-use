@@ -24,7 +24,7 @@ account/rateLimits/read / model/list，未发送任何模型请求）。
 
 ## 背景与目标
 
-DSH（`@deepseek-ai/dsh@0.1.0-rc.6`）当前只有 DeepSeek 官方 API 一个正式
+DSH（`@deepseek-ai/dsh@0.1.0-rc.7`）当前只有 DeepSeek 官方 API 一个正式
 provider（另有 pi-ai 多 provider 桥）。本机 Codex CLI 已通过 ChatGPT 账号登录
 （探针实证：`account/read` 返回 `type: "chatgpt"`, `planType: "prolite"`），
 其 App Server 提供 stdio JSON-RPC 编码代理协议，含 `model/list` 与

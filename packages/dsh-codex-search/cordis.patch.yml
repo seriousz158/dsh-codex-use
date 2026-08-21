@@ -1,0 +1,5 @@
+# Search is a separate opt-in bundle. The provider remains disabled until the
+# user explicitly enables `llm-codex-search.enabled`.
+- insert:
+    - id: codex-search
+      name: dsh-codex-search

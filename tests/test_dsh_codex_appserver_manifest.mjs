@@ -11,6 +11,7 @@ const patch = await readFile(join(packageDir, "cordis.patch.yml"), "utf8");
 assert.equal(manifest.name, "dsh-codex-appserver");
 assert.equal(manifest.dsh?.bundle?.patch, "./cordis.patch.yml");
 assert.equal(manifest.dsh?.client?.platform, "web");
+assert.ok(manifest.dsh?.client?.inject?.includes("@deepseek-ai/dsh-client-ui-settings-plugins"));
 assert.equal(manifest.exports?.["./cordis.patch.yml"], "./cordis.patch.yml");
 assert.equal(manifest.exports?.["./compatibility.json"], "./compatibility.json");
 assert.ok(manifest.files.includes("cordis.patch.yml"));
@@ -19,6 +20,7 @@ for (const name of [
   "@deepseek-ai/dsh-llm",
   "@deepseek-ai/dsh-settings",
   "@deepseek-ai/dsh-typert-protocol",
+  "@deepseek-ai/dsh-attachment",
 ]) {
   assert.equal(manifest.peerDependencies[name], ">=0.1.0-rc.7 <0.2.0-0");
 }

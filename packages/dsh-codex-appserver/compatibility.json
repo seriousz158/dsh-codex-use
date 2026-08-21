@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.2.0",
+  "pluginVersion": "0.2.1",
   "node": {
     "minimum": ">=22"
   },
@@ -20,7 +20,7 @@
     "doctorOffline": true,
     "doctorLive": true,
     "settingsCard": true,
-    "fastMode": false,
+    "fastMode": true,
     "localImageInput": false,
     "search": false,
     "imageGeneration": false

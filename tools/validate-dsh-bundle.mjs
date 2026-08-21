@@ -32,5 +32,6 @@ assert.ok(manifest.files?.includes("cordis.patch.yml"), "published files must in
 assert.match(manifest.peerDependencies?.["@deepseek-ai/dsh-llm"] ?? "", /0\.1\.0-rc\.7/);
 assert.match(manifest.peerDependencies?.["@deepseek-ai/dsh-settings"] ?? "", /0\.1\.0-rc\.7/);
 assert.match(manifest.peerDependencies?.["@deepseek-ai/dsh-typert-protocol"] ?? "", /0\.1\.0-rc\.7/);
+assert.match(manifest.peerDependencies?.["@deepseek-ai/dsh-attachment"] ?? "", /0\.1\.0-rc\.7/);
 
 console.log(`dsh bundle validation passed: ${manifest.name}@${manifest.version}`);

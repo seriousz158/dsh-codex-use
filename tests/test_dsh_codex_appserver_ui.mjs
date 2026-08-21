@@ -10,6 +10,8 @@ assert.match(source, /role: "progressbar"/, "usage must expose an accessible pro
 assert.match(source, /展开额度详情|收起额度详情/, "the disclosure affordance must be visible in Chinese");
 assert.match(source, /剩余/, "quota values must be presented as remaining allowance");
 assert.match(source, /buckets\?\.codex/, "the settings row must only expose the Codex quota bucket");
+assert.match(source, /settings\.plugin\.item/, "the plugin settings card must use the plugin slot");
+assert.match(source, /settingsScope\.bind/, "the plugin settings card must use the revision-fenced settings transport");
 assert.ok(source.includes("background:rgba(148,163,184,.28)"), "the progress track must keep contrast in dark and light themes");
 assert.ok(source.includes("background:#38bdf8"), "a full remaining allowance must use the blue-green normal color");
 assert.ok(source.includes("background:#fbbf24"), "a medium remaining allowance must use the amber warning color");
@@ -22,8 +24,8 @@ vm.runInNewContext(source, {
 
 const jsx = (type, props = {}) => ({ type, props });
 const jsxs = jsx;
-let component;
-let effect;
+const components = [];
+const effects = [];
 const state = [];
 let hookIndex = 0;
 const react = {
@@ -33,7 +35,7 @@ const react = {
     return [state[index], (next) => { state[index] = typeof next === "function" ? next(state[index]) : next; }];
   },
   useCallback(callback) { return callback; },
-  useEffect(callback) { effect = callback; },
+  useEffect(callback) { effects.push(callback); },
 };
 const fakeService = {
   async status() { return { ok: true, value: { ok: true, value: { available: true } } }; },
@@ -63,6 +65,15 @@ const fakeService = {
     };
   },
 };
+const settingsWrites = [];
+const settingsValue = { codexBin: "", sandbox: "workspace-write", approvalPolicy: "never", ephemeralThreads: true, injectMemory: false, historyBootstrap: 20, requestTimeoutMs: 600000, rateLimitRefreshSec: 30, fastMode: false };
+const fakeSettingsScope = {
+  snapshot: { status: "ready", writable: true, value: settingsValue, revision: 1 },
+  getSnapshot() { return this.snapshot; },
+  subscribe() { return () => {}; },
+  async set(field, value) { settingsWrites.push({ op: "set", field, value }); this.snapshot = { ...this.snapshot, revision: this.snapshot.revision + 1, value: { ...this.snapshot.value, [field]: value } }; },
+  async unset(field) { settingsWrites.push({ op: "unset", field }); this.snapshot = { ...this.snapshot, revision: this.snapshot.revision + 1, value: { ...this.snapshot.value, [field]: undefined } }; },
+};
 const plugin = registered.factory((name) => {
   if (name === "react") return react;
   if (name === "react/jsx-runtime") return { jsx, jsxs };
@@ -76,15 +87,21 @@ await plugin.apply({
       remote: { codexAppserver: fakeService },
       slots: {
         inject(_slot, register) { register(); },
-        register(_metadata, value) { component = value; return value; },
+        register(metadata, value) { components.push({ metadata, value }); return value; },
       },
+      settingsScope: { bind() { return fakeSettingsScope; } },
     });
   },
 });
 
+const quotaComponent = components.find(({ metadata }) => metadata.id === "codex-appserver")?.value;
+const settingsComponent = components.find(({ metadata }) => metadata.key === "llm-codex-appserver")?.value;
+assert.ok(quotaComponent, "quota row must remain in settings.general.item");
+assert.ok(settingsComponent, "settings card must be registered in settings.plugin.item");
+
 function render() {
   hookIndex = 0;
-  return component();
+  return quotaComponent();
 }
 
 function childrenOf(node) {
@@ -108,7 +125,7 @@ const disclosure = () => findAll(tree, (node) => node.type === "button" && node.
 assert.ok(disclosure(), "the whole quota summary must be expandable");
 assert.equal(disclosure().props["aria-expanded"], false, "quota details must be collapsed by default");
 
-await effect();
+await effects[0]();
 await new Promise((resolve) => setImmediate(resolve));
 tree = render();
 assert.equal(disclosure().props["aria-expanded"], false, "refreshing allowance data must not expand quota details");
@@ -133,5 +150,24 @@ disclosure().props.onClick();
 tree = render();
 assert.equal(disclosure().props["aria-expanded"], false, "clicking the disclosure again must collapse quota details");
 assert.equal(findAll(tree, (node) => node.props?.role === "progressbar").length, 1, "collapsing quota details must retain only the compact Codex remaining-allowance bar");
+
+state.length = 0;
+hookIndex = 0;
+const settingsTree = settingsComponent();
+const settingInputs = findAll(settingsTree, (node) => node.type === "input");
+const codexBin = settingInputs.find((node) => node.props?.value === "");
+assert.ok(codexBin, "settings card must expose codexBin");
+codexBin.props.onChange({ target: { value: "/custom/codex" } });
+hookIndex = 0;
+const draftTree = settingsComponent();
+const saveButton = findAll(draftTree, (node) => node.type === "button" && node.props?.children === "保存")[0];
+assert.equal(saveButton.props.disabled, false, "Save must become enabled for a draft change");
+await saveButton.props.onClick();
+assert.deepEqual(settingsWrites[0], { op: "set", field: "codexBin", value: "/custom/codex" });
+assert.equal(fakeSettingsScope.snapshot.revision, 2, "settings writes must advance the revision fence");
+hookIndex = 0;
+const savedTree = settingsComponent();
+const discardButton = findAll(savedTree, (node) => node.type === "button" && node.props?.children === "放弃修改")[0];
+assert.equal(discardButton.props.disabled, true, "Discard is disabled when there is no draft");
 
 console.log("dsh-codex app-server UI tests passed");

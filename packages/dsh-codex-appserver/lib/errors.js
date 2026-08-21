@@ -43,7 +43,8 @@ export function errorContext(code, overrides = {}) {
 }
 
 export function serializeCodexError(error, fallbackCode = "turn-failed") {
-  const code = CODEX_ERROR_CODES.includes(error?.code) ? error.code : fallbackCode;
+  const fallback = CODEX_ERROR_CODES.includes(fallbackCode) ? fallbackCode : "turn-failed";
+  const code = CODEX_ERROR_CODES.includes(error?.code) ? error.code : fallback;
   return errorContext(code, error ?? {});
 }
 
