@@ -71,7 +71,8 @@ export function inspectHostSurface({ dshBin = locateDshBinary(), runtimeNodeModu
       && /settings\.plugin\.item/.test(readFileSync(files.pluginSettings, "utf8")));
   }
 
-  const browser = process.env.PLAYWRIGHT_CLI || commandOnPath("playwright-cli") || join(homedir(), ".codex", "skills", "playwright", "scripts", "playwright_cli.sh");
+  const browserCandidate = process.env.PLAYWRIGHT_CLI || commandOnPath("playwright-cli") || join(homedir(), ".codex", "skills", "playwright", "scripts", "playwright_cli.sh");
+  const browser = existsSync(browserCandidate) ? browserCandidate : null;
   checks.browser = Boolean(browser);
   const missing = Object.entries(checks)
     .filter(([, value]) => !value)
@@ -197,7 +198,6 @@ export async function runBrowserSurfaceCheck({ browser, url, dshHome }) {
   if (!snapshot.includes(testCodexPath)) throw new Error("saved codexBin value was not reflected in the settings snapshot");
 
   const discardInput = snapshotInputRef(snapshot, /Codex CLI 路径/);
-  const discard = snapshotRef(snapshot, /button "放弃修改"/);
   await browserCommand(browser, ["fill", discardInput, "/tmp/dsh-codex-discard-check"]);
   snapshot = await browserCommand(browser, ["snapshot"]);
   const discardAfterEdit = snapshotRef(snapshot, /button "放弃修改"/);
