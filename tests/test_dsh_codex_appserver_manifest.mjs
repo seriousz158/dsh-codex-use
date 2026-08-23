@@ -16,13 +16,14 @@ assert.equal(manifest.exports?.["./cordis.patch.yml"], "./cordis.patch.yml");
 assert.equal(manifest.exports?.["./compatibility.json"], "./compatibility.json");
 assert.ok(manifest.files.includes("cordis.patch.yml"));
 assert.ok(manifest.files.includes("compatibility.json"));
+const appserverLlmRange = manifest.peerDependencies["@deepseek-ai/dsh-llm"];
 for (const name of [
   "@deepseek-ai/dsh-llm",
   "@deepseek-ai/dsh-settings",
   "@deepseek-ai/dsh-typert-protocol",
   "@deepseek-ai/dsh-attachment",
 ]) {
-  assert.equal(manifest.peerDependencies[name], ">=0.1.0-rc.7 <0.2.0-0");
+  assert.equal(manifest.peerDependencies[name], appserverLlmRange);
 }
 assert.match(patch, /- id: codex-appserver\n\s+name: dsh-codex-appserver\n?$/m);
 

@@ -43,9 +43,13 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 | 组件 | 版本/要求 |
 | --- | --- |
 | Node.js | `>=22` |
-| DSH | `>=0.1.0-rc.7 <0.2.0-0`；已验证 `0.1.0-rc.7` |
+| DSH | `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0`；已验证 `0.1.0-rc.7`、`0.1.1-rc.2` |
 | Codex CLI | `0.144.1` |
 | 运行环境 | macOS + zsh（安装脚本） |
+
+`0.2.3` 只支持 Codex CLI `0.144.1`。其它版本（例如 `0.149.0`）会 fail-closed
+为 `protocol-mismatch`，不会继续启动请求。额度 live gate 需要可用的
+`0.144.1` 二进制；没有该二进制时只提供 fixture/离线验证，不伪造额度状态。
 
 ## 旧版手工安装迁移
 
@@ -162,5 +166,9 @@ npm run scan:secrets
 
 ## 版本说明
 
-`0.2.x` 增加官方 DSH Bundle、doctor、revision-fenced 设置卡、额度状态模型、Fast Mode 和本地图片输入，并保留旧版手工安装迁移。协议 schema 来自 Codex CLI `0.144.1`；如果
+`0.2.3` 增加双 runtime peer 契约（覆盖 DSH `rc.7` 和 `rc.2`），并保留官方 DSH Bundle、doctor、revision-fenced 设置卡、额度状态模型、Fast Mode 和本地图片输入。协议 schema 来自 Codex CLI `0.144.1`；如果
 Codex App Server 协议发生变化，应先更新 schema、fixture 和协议测试，再发布新版本。
+
+This project is distributed through GitHub source installs and GitHub Releases.
+It is not published to npm. Fast Mode is schema-gated and depends on upstream
+service-tier support; live model-turn verification is not part of the release gate.

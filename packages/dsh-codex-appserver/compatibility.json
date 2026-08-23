@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.2.2",
+  "pluginVersion": "0.2.3",
   "node": {
     "minimum": ">=22"
   },
   "dsh": {
-    "supported": ">=0.1.0-rc.7 <0.2.0-0",
+    "supported": ">=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0",
     "verified": [
-      "0.1.0-rc.7"
+      "0.1.0-rc.7",
+      "0.1.1-rc.2"
     ]
   },
   "codex": {
