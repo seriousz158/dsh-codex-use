@@ -68,7 +68,11 @@ export function toLlmError(error, fallbackCode = "turn-failed", overrides = {}) 
 
 export function isExplicitReauthSignal(value) {
   if (!value || typeof value !== "object") return false;
-  if (value.requiresOpenaiAuth === true || value.result?.requiresOpenaiAuth === true) return true;
+  const accountResult = value.result && typeof value.result === "object" ? value.result : value;
+  // `account/read` legitimately returns requiresOpenaiAuth=true for an
+  // authenticated ChatGPT account. Only treat it as reauth-required when no
+  // account was returned; explicit RPC error codes remain authoritative.
+  if (accountResult.requiresOpenaiAuth === true && accountResult.account == null) return true;
   const code = value.error?.code ?? value.code;
   return typeof code === "string" && EXPLICIT_REAUTH_CODES.has(code);
 }

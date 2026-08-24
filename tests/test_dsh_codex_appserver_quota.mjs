@@ -78,4 +78,16 @@ test("explicit authentication signal is reauth-required, not a generic network e
   assert.equal(snapshot.error.code, "reauth-required");
 });
 
+test("authenticated ChatGPT account may require OpenAI auth and still exposes quota", async () => {
+  const adapter = adapterFor(async (method) => {
+    if (method === "initialize") return { result: {} };
+    if (method === "account/read") return { result: { account: { type: "chatgpt", email: null, planType: "prolite" }, requiresOpenaiAuth: true } };
+    if (method === "account/rateLimits/read") return { result: { rateLimitsByLimitId: { codex: { limitId: "codex", primary: { usedPercent: 10 } } } } };
+    throw new Error(`unexpected method ${method}`);
+  });
+  const snapshot = await adapter.getRateLimits({ force: true });
+  assert.equal(snapshot.state, "available");
+  assert.equal(snapshot.buckets.codex.primary.usedPercent, 10);
+});
+
 console.log("quota checks passed");
