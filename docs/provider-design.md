@@ -3,7 +3,8 @@
 ## 状态
 
 实现已落地，Bundle manifest、Phase 1/2 的静态、协议回放、安装 smoke 与本机 Web UI
-smoke 已完成（2026-08-21）。这里的“完成”不包含真实模型请求或付费额度消耗；
+smoke 已完成（2026-08-24）。当前发布候选为 `0.2.4`，运行时目标是 Codex CLI
+`0.149.0`；这里的“完成”不包含真实模型请求或付费额度消耗；
 这两项仍由显式的 live gate 控制。
 
 当前注册边界按安装通道隔离：
@@ -17,8 +18,9 @@ smoke 已完成（2026-08-21）。这里的“完成”不包含真实模型请�
 - 2026-08-21 本机 Web smoke 已确认 HTTP 200，设置页出现 Codex Provider/额度；
   该 smoke 没有发送模型请求。
 
-关键协议与架构事实均已用本机环境实证：`codex app-server generate-json-schema`
-（codex-cli 0.144.1）离线导出的完整 JSON Schema，以及对本机
+关键协议与架构事实均已用本机环境实证：`codex app-server generate-json-schema --experimental`
+和 `generate-ts --experimental`（codex-cli 0.149.0）离线导出的完整 JSON Schema，
+以及对本机
 `codex app-server --stdio` 的只读探针（initialize / account/read /
 account/rateLimits/read / model/list，未发送任何模型请求）。
 
@@ -80,7 +82,7 @@ provider（另有 pi-ai 多 provider 桥）。本机 Codex CLI 已通过 ChatGPT
 - **辅助调用**：`GenerateOptions.purpose` 可为 `'compaction' |
   'session-title'`，适配器需要处理或明确拒绝。
 
-### Codex 侧（0.144.1 JSON Schema + 只读探针实证）
+### Codex 侧（0.149.0 JSON Schema + 只读探针实证）
 
 - 传输：`codex app-server --stdio`，换行分隔 JSON-RPC 2.0。
 - 握手：`initialize`（clientInfo）→ `initialized` 通知。
@@ -108,8 +110,9 @@ provider（另有 pi-ai 多 provider 桥）。本机 Codex CLI 已通过 ChatGPT
   `item/fileChange/requestApproval`、`item/permissions/requestApproval`。
 - 动态工具（server→client）：`item/tool/call`（`DynamicToolCallParams`）——
   官方预留的工具桥接点，Phase 4 实验用。
-- 协议类型生成：`codex app-server generate-ts` / `generate-json-schema`，
-  可按本机 CLI 版本离线产出类型。
+- 协议类型生成：`codex app-server generate-ts --experimental` /
+  `generate-json-schema --experimental`，可按本机 CLI 版本离线产出类型；
+  `0.144.1` 只保留为历史 fixture。
 
 ## 核心决策
 
@@ -219,9 +222,8 @@ spawn 参数与 `thread/start` 固定保守策略：
 ### System prompt 边界
 
 DSH 的 system prompt 含 DSH 工具说明，不转发给 Codex。`injectMemory` 默认
-关闭；只有显式设为 `true` 且能读取到快照时，adapter 才把记忆放入
-`turn/start.additionalContext["dpsk-memory"]`，并标记为 `kind: "untrusted"`。
-它不会进入 `developerInstructions`，也不会把 DSH system prompt 转发给 Codex。
+关闭；在 Codex `0.149.0` 运行时显式打开会立即返回 `protocol-error`，不读取
+记忆、不把记忆提升为 `developerInstructions`，也不发送 `turn/start.additionalContext`。
 
 ### 模型与 reasoning effort
 
@@ -265,7 +267,7 @@ DSH 的 system prompt 含 DSH 工具说明，不转发给 Codex。`injectMemory`
 | `sandbox` | enum | `workspace-write` | `read-only / workspace-write` |
 | `approvalPolicy` | enum | `never` | 唯一接受值；协议审批请求在 adapter 侧拒绝 |
 | `ephemeralThreads` | boolean | `true` | 默认不保留 Codex history；设为 `false` 才启用持久 thread/resume |
-| `injectMemory` | boolean | `false` | 记忆经 `turn/start.additionalContext["dpsk-memory"]` 以 `untrusted` 传入 |
+| `injectMemory` | boolean | `false` | `0.149.0` 下显式打开即 `protocol-error`，不会读取或发送记忆 |
 | `historyBootstrap` | number | `20` | 切换 provider 首回合携带的压缩转录条数 |
 | `rateLimitRefreshSec` | number | `30` | 额度读取节流 |
 | `requestTimeoutMs` | number | `600000` | turn 级超时 |
@@ -284,18 +286,18 @@ DSH 的 system prompt 含 DSH 工具说明，不转发给 Codex。`injectMemory`
 
 ### Phase 1：只读探针（不发送模型请求，已完成）
 
-- `tools/codex-appserver-probe.mjs`（由 /tmp 探针固化而来）：initialize →
+- `tools/codex-appserver-probe.mjs`：initialize →
   `account/read` → `account/rateLimits/read`（含订阅一次
   `account/rateLimits/updated` 的注册路径）→ `model/list`，全程实录
   JSON-RPC 帧到 `tools/fixtures/`（脱敏）。
 - 确认项：usage 在 `turn/completed` 的确切字段名（从 schema 静态确认，
-  不发请求）；记忆边界改为 adapter 的 `additionalContext` 契约；
-  `generate-ts` 产物与 0.144.1 的对应关系。
+  不发请求）；`injectMemory` 的 fail-closed 边界；以及 `0.149.0` 的额度、
+  模型元数据和 Fast Mode service tier。
 - 验收：脚本零模型请求跑通，实录文件作为 provider 回放测试 fixture。
 
 ### Phase 2：provider 插件（实现已落地）
 
-- `packages/dsh-codex-appserver/` 全部代码 + `bin/dsh-codex-install`。
+- `packages/dsh-codex-appserver/` 全部代码 + `integrations/dsh/dsh-codex-install`。
 - 已验收：静态契约、协议回放、线程状态、UI descriptor、安装脚本和
   shared-host/Web 注册唯一性测试；本机 Web HTTP 200 且设置页显示
   Codex Provider/额度。

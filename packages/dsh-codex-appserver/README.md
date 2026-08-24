@@ -18,11 +18,17 @@ bundle patch mounts the host provider; the client manifest injects the UI.
 - Node.js `>=22`
 - DSH `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0` (verified on
   `0.1.0-rc.7` and `0.1.1-rc.2`)
-- Codex CLI `0.144.1` App Server protocol fixtures
+- Codex CLI `0.149.0` App Server protocol generated with `--experimental`
+- Codex CLI `0.144.1` is retained only as a historical replay fixture
 
-Release `0.2.3` supports Codex CLI `0.144.1` only. Other versions fail closed
+Release `0.2.4` supports Codex CLI `0.149.0` only. Other versions fail closed
 with `protocol-mismatch`. This project is distributed through GitHub source
 installs and GitHub Releases; it is not published to npm.
+
+The `injectMemory` setting remains fail-closed for this protocol generation:
+turns refuse to start with `protocol-error` when it is explicitly enabled. The
+adapter never promotes memory to `developerInstructions` and never sends an
+unsupported context field.
 
 The standalone doctor is metadata-only by default:
 

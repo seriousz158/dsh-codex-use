@@ -1,12 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "TurnModerationMetadataNotification",
-  "type": "object",
-  "required": [
-    "metadata",
-    "threadId",
-    "turnId"
-  ],
   "properties": {
     "metadata": true,
     "threadId": {
@@ -15,5 +8,12 @@
     "turnId": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "metadata",
+    "threadId",
+    "turnId"
+  ],
+  "title": "TurnModerationMetadataNotification",
+  "type": "object"
 }

@@ -1,10 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreadBackgroundTerminalsListParams",
-  "type": "object",
-  "required": [
-    "threadId"
-  ],
   "properties": {
     "cursor": {
       "description": "Opaque pagination cursor returned by a previous call.",
@@ -15,15 +10,20 @@
     },
     "limit": {
       "description": "Optional page size.",
+      "format": "uint32",
+      "minimum": 0.0,
       "type": [
         "integer",
         "null"
-      ],
-      "format": "uint32",
-      "minimum": 0.0
+      ]
     },
     "threadId": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "threadId"
+  ],
+  "title": "ThreadBackgroundTerminalsListParams",
+  "type": "object"
 }

@@ -1,19 +1,12 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RemoteControlPairingStartResponse",
-  "type": "object",
-  "required": [
-    "environmentId",
-    "expiresAt",
-    "pairingCode"
-  ],
   "properties": {
     "environmentId": {
       "type": "string"
     },
     "expiresAt": {
-      "type": "integer",
-      "format": "int64"
+      "format": "int64",
+      "type": "integer"
     },
     "manualPairingCode": {
       "type": [
@@ -24,5 +17,12 @@
     "pairingCode": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "environmentId",
+    "expiresAt",
+    "pairingCode"
+  ],
+  "title": "RemoteControlPairingStartResponse",
+  "type": "object"
 }

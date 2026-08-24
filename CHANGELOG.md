@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.4 — 2026-08-24
+
+- Refresh the vendored App Server JSON Schema and TypeScript protocol artifacts from
+  Codex CLI `0.149.0` with `--experimental`.
+- Adapt the quota and model contracts to the new `rateLimitsByLimitId`, spend-control,
+  service-tier, and model metadata fields while exposing only the public `codex` bucket.
+- Keep `injectMemory` fail-closed for this protocol; no memory is promoted to
+  `developerInstructions` or sent as an unsupported turn field.
+- Make the portable installer isolate its tests, migrate only an explicitly declared
+  legacy active link, back up stale links atomically, and reject unknown targets.
+- Retain Codex `0.144.1` as historical replay fixtures only. Distribution remains via
+  GitHub source/Releases; no `npm publish`.
+
 ## 0.2.3 — 2026-08-23
 
 - Fix DSH peer ranges for prerelease runtimes `0.1.0-rc.7` and `0.1.1-rc.2`.

@@ -622,6 +622,12 @@ export class CodexAppServerAdapter extends LlmAdapter {
   }
 
   async *#streamLocked(options, sessionId, config) {
+    if (config.injectMemory === true) {
+      throw new LlmError(
+        "Codex memory injection is unsupported by protocol 0.149.0; disable Inject memory",
+        "protocol-error",
+      );
+    }
     await this.#ensureReady();
     const cwd = this.#workspace(options, sessionId);
     const messages = Array.isArray(options.messages) ? options.messages : [];
@@ -749,7 +755,6 @@ export class CodexAppServerAdapter extends LlmAdapter {
           cwd,
           sandboxPolicy: sandboxPolicy(config.sandbox, cwd),
           ...(serviceTier ? { serviceTier } : {}),
-          ...(memory.text ? { additionalContext: { "dpsk-memory": { kind: "untrusted", value: memory.text } } } : {}),
         }, { signal: options.signal, timeoutMs: config.requestTimeoutMs });
       } catch (error) {
         if (error?.code === "aborted" || options.signal?.aborted) {

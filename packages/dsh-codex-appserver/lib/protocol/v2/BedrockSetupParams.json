@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AwsCredentialType": {
+      "enum": [
+        "accessKeys",
+        "bedrockApiKey"
+      ],
+      "type": "string"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "profile": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "profile"
+          ],
+          "title": "Profilev2::BedrockSetupParamsType",
+          "type": "string"
+        }
+      },
+      "required": [
+        "profile",
+        "region",
+        "type"
+      ],
+      "title": "Profilev2::BedrockSetupParams",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "credentialType": {
+          "$ref": "#/definitions/AwsCredentialType"
+        },
+        "region": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "environment"
+          ],
+          "title": "Environmentv2::BedrockSetupParamsType",
+          "type": "string"
+        }
+      },
+      "required": [
+        "credentialType",
+        "region",
+        "type"
+      ],
+      "title": "Environmentv2::BedrockSetupParams",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        },
+        "sessionToken": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "type": {
+          "enum": [
+            "accessKeys"
+          ],
+          "title": "AccessKeysv2::BedrockSetupParamsType",
+          "type": "string"
+        }
+      },
+      "required": [
+        "accessKeyId",
+        "region",
+        "secretAccessKey",
+        "type"
+      ],
+      "title": "AccessKeysv2::BedrockSetupParams",
+      "type": "object"
+    }
+  ],
+  "title": "BedrockSetupParams"
+}

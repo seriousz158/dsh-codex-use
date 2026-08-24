@@ -1,20 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "EnvironmentAddParams",
-  "type": "object",
-  "required": [
-    "environmentId",
-    "execServerUrl"
-  ],
   "properties": {
     "connectTimeoutMs": {
       "description": "Optional WebSocket connection timeout. The server default applies when omitted.",
+      "format": "uint64",
+      "minimum": 0.0,
       "type": [
         "integer",
         "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
+      ]
     },
     "environmentId": {
       "type": "string"
@@ -22,5 +16,11 @@
     "execServerUrl": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "environmentId",
+    "execServerUrl"
+  ],
+  "title": "EnvironmentAddParams",
+  "type": "object"
 }

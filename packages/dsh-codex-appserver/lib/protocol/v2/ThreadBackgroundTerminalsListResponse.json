@@ -1,16 +1,62 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreadBackgroundTerminalsListResponse",
-  "type": "object",
-  "required": [
-    "data"
-  ],
+  "definitions": {
+    "LegacyAppPathString": {
+      "type": "string"
+    },
+    "ThreadBackgroundTerminal": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "cpuPercent": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "cwd": {
+          "$ref": "#/definitions/LegacyAppPathString"
+        },
+        "itemId": {
+          "type": "string"
+        },
+        "osPid": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "processId": {
+          "type": "string"
+        },
+        "rssKb": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "command",
+        "cwd",
+        "itemId",
+        "processId"
+      ],
+      "type": "object"
+    }
+  },
   "properties": {
     "data": {
-      "type": "array",
       "items": {
         "$ref": "#/definitions/ThreadBackgroundTerminal"
-      }
+      },
+      "type": "array"
     },
     "nextCursor": {
       "description": "Opaque cursor to pass to the next call to continue after the last item. If None, there are no more items to return.",
@@ -20,56 +66,9 @@
       ]
     }
   },
-  "definitions": {
-    "AbsolutePathBuf": {
-      "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
-      "type": "string"
-    },
-    "ThreadBackgroundTerminal": {
-      "type": "object",
-      "required": [
-        "command",
-        "cwd",
-        "itemId",
-        "processId"
-      ],
-      "properties": {
-        "command": {
-          "type": "string"
-        },
-        "cpuPercent": {
-          "type": [
-            "number",
-            "null"
-          ],
-          "format": "double"
-        },
-        "cwd": {
-          "$ref": "#/definitions/AbsolutePathBuf"
-        },
-        "itemId": {
-          "type": "string"
-        },
-        "osPid": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "processId": {
-          "type": "string"
-        },
-        "rssKb": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
-        }
-      }
-    }
-  }
+  "required": [
+    "data"
+  ],
+  "title": "ThreadBackgroundTerminalsListResponse",
+  "type": "object"
 }

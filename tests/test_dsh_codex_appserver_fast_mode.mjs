@@ -38,17 +38,18 @@ async function run(model, fastMode) {
   return rpc.requests.find((request) => request.method === "turn/start");
 }
 
-test("existing 0.144.1 fixture advertises priority service tier", async () => {
-  const fixture = JSON.parse(await readFile(new URL("../tools/fixtures/codex-appserver-0.144.1.json", import.meta.url), "utf8"));
+test("0.149.0 fixture advertises priority service tier", async () => {
+  const fixture = JSON.parse(await readFile(new URL("../tools/fixtures/codex-appserver-0.149.0.json", import.meta.url), "utf8"));
   const modelFrames = fixture.frames.filter((event) => event.direction === "in" && event.frame?.result?.data);
   assert.ok(modelFrames.some((event) => event.frame.result.data.some((model) => model.serviceTiers?.some((tier) => tier.id === "priority"))));
 });
 
 test("Fast Mode sends only the schema-defined turn/start serviceTier", async () => {
-  const request = await run({ id: "model-fast", displayName: "Fast", serviceTiers: [{ id: "priority", name: "Fast", description: "" }] }, true);
+  const request = await run({ id: "model-fast", displayName: "Fast", availabilityNux: "available", defaultReasoningEffort: "medium", additionalSpeedTiers: ["priority"], serviceTiers: [{ id: "priority", name: "Fast", description: "" }] }, true);
   assert.equal(request.params.serviceTier, "priority");
   assert.equal(Object.hasOwn(request.params, "service_tier"), false);
   assert.equal(Object.hasOwn(request.params, "additionalSpeedTiers"), false);
+  assert.equal(Object.hasOwn(request.params, "additionalContext"), false);
 });
 
 test("Fast Mode is capability-gated and omitted for models without priority", async () => {

@@ -1,30 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RemoteControlClientsListResponse",
-  "type": "object",
-  "required": [
-    "data"
-  ],
-  "properties": {
-    "data": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/RemoteControlClient"
-      }
-    },
-    "nextCursor": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  },
   "definitions": {
     "RemoteControlClient": {
-      "type": "object",
-      "required": [
-        "clientId"
-      ],
       "properties": {
         "appVersion": {
           "type": [
@@ -54,11 +31,11 @@
           ]
         },
         "lastSeenAt": {
+          "format": "int64",
           "type": [
             "integer",
             "null"
-          ],
-          "format": "int64"
+          ]
         },
         "osVersion": {
           "type": [
@@ -72,7 +49,30 @@
             "null"
           ]
         }
-      }
+      },
+      "required": [
+        "clientId"
+      ],
+      "type": "object"
     }
-  }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/definitions/RemoteControlClient"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "RemoteControlClientsListResponse",
+  "type": "object"
 }

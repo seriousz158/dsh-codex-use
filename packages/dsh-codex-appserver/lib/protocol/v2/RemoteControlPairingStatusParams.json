@@ -1,7 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RemoteControlPairingStatusParams",
-  "type": "object",
   "properties": {
     "manualPairingCode": {
       "type": [
@@ -15,5 +13,7 @@
         "null"
       ]
     }
-  }
+  },
+  "title": "RemoteControlPairingStatusParams",
+  "type": "object"
 }

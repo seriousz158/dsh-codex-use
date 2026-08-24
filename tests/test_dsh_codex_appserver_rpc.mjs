@@ -90,8 +90,8 @@ const approvalRequests = [
   ["item/commandExecution/requestApproval", { itemId: "item-1", startedAtMs: 1, threadId: "thread-1", turnId: "turn-1" }, { decision: "decline" }],
   ["item/fileChange/requestApproval", { itemId: "item-2", startedAtMs: 1, threadId: "thread-1", turnId: "turn-1" }, { decision: "decline" }],
   ["item/permissions/requestApproval", { cwd: "/tmp", itemId: "item-3", permissions: {}, startedAtMs: 1, threadId: "thread-1", turnId: "turn-1" }, { permissions: {} }],
-  ["applyPatchApproval", { callId: "call-1", conversationId: "thread-1", fileChanges: {} }, { decision: "denied" }],
-  ["execCommandApproval", { callId: "call-2", command: ["pwd"], conversationId: "thread-1", cwd: "/tmp", parsedCmd: [] }, { decision: "denied" }],
+  ["applyPatchApproval", { callId: "call-1", conversationId: "thread-1", fileChanges: {} }, { decision: { denied: { rejection: "Codex approvals are disabled by DSH policy" } } }],
+  ["execCommandApproval", { callId: "call-2", command: ["pwd"], conversationId: "thread-1", cwd: "/tmp", parsedCmd: [] }, { decision: { denied: { rejection: "Codex approvals are disabled by DSH policy" } } }],
 ];
 for (const [index, [method, params, expected]] of approvalRequests.entries()) {
   const id = 100 + index;
@@ -215,7 +215,7 @@ await assert.rejects(
 );
 assert.equal(malformedRpc.child, null, "a malformed response must close the affected RPC process");
 
-// codex-cli 0.144.1 emits response frames without the optional jsonrpc member.
+// Codex app-server response frames may omit the optional jsonrpc member.
 // Keep that observed wire form compatible while still validating the result body.
 const observedEnvelopeChild = new FakeChild();
 wireChild(observedEnvelopeChild, [], (frame, activeChild) => {

@@ -1,56 +1,43 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExternalAgentConfigImportHistoriesReadResponse",
-  "type": "object",
-  "required": [
-    "data"
-  ],
-  "properties": {
-    "data": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ExternalAgentConfigImportHistory"
-      }
-    }
-  },
   "definitions": {
     "ExternalAgentConfigImportHistory": {
-      "type": "object",
+      "properties": {
+        "completedAtMs": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "failures": {
+          "items": {
+            "$ref": "#/definitions/ExternalAgentConfigImportItemTypeFailure"
+          },
+          "type": "array"
+        },
+        "importId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "successes": {
+          "items": {
+            "$ref": "#/definitions/ExternalAgentConfigImportItemTypeSuccess"
+          },
+          "type": "array"
+        }
+      },
       "required": [
         "completedAtMs",
         "failures",
         "importId",
         "successes"
       ],
-      "properties": {
-        "completedAtMs": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "failures": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ExternalAgentConfigImportItemTypeFailure"
-          }
-        },
-        "importId": {
-          "type": "string"
-        },
-        "successes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ExternalAgentConfigImportItemTypeSuccess"
-          }
-        }
-      }
+      "type": "object"
     },
     "ExternalAgentConfigImportItemTypeFailure": {
-      "type": "object",
-      "required": [
-        "failureStage",
-        "itemType",
-        "message"
-      ],
       "properties": {
         "cwd": {
           "type": [
@@ -78,14 +65,22 @@
             "string",
             "null"
           ]
+        },
+        "subErrorType": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "required": [
+        "failureStage",
+        "itemType",
+        "message"
+      ],
+      "type": "object"
     },
     "ExternalAgentConfigImportItemTypeSuccess": {
-      "type": "object",
-      "required": [
-        "itemType"
-      ],
       "properties": {
         "cwd": {
           "type": [
@@ -107,11 +102,22 @@
             "string",
             "null"
           ]
+        },
+        "title": {
+          "default": null,
+          "description": "Original title for an imported session; null for other item types.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "required": [
+        "itemType"
+      ],
+      "type": "object"
     },
     "ExternalAgentConfigMigrationItemType": {
-      "type": "string",
       "enum": [
         "AGENTS_MD",
         "CONFIG",
@@ -121,8 +127,57 @@
         "SUBAGENTS",
         "HOOKS",
         "COMMANDS",
+        "MEMORY",
         "SESSIONS"
-      ]
+      ],
+      "type": "string"
+    },
+    "ExternalAgentImportedConnectorCandidate": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "sessionCount": {
+          "format": "uint32",
+          "minimum": 0.0,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/definitions/ExternalAgentImportedConnectorSource"
+        }
+      },
+      "required": [
+        "name",
+        "sessionCount",
+        "source"
+      ],
+      "type": "object"
+    },
+    "ExternalAgentImportedConnectorSource": {
+      "enum": [
+        "remoteMcpServersConfig"
+      ],
+      "type": "string"
     }
-  }
+  },
+  "properties": {
+    "connectors": {
+      "items": {
+        "$ref": "#/definitions/ExternalAgentImportedConnectorCandidate"
+      },
+      "type": "array"
+    },
+    "data": {
+      "items": {
+        "$ref": "#/definitions/ExternalAgentConfigImportHistory"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "connectors",
+    "data"
+  ],
+  "title": "ExternalAgentConfigImportHistoriesReadResponse",
+  "type": "object"
 }
