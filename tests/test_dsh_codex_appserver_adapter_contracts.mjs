@@ -69,40 +69,57 @@ function emitCompleted(client, { threadId, turnId, text = "done", usage = true }
 
 const workspace = await mkdtemp(join(tmpdir(), "dsh-codex-contract-workspace-"));
 const memoryStore = new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-memory-map-")), "threads.json"));
-const memoryRpc = new FakeRpc(async (method, _params, _options, client) => {
-  if (method === "initialize") return { result: {} };
-  if (method === "thread/start") return { result: { thread: { id: "memory-thread" } } };
-  if (method === "turn/start") {
-    emitCompleted(client, { threadId: "memory-thread", turnId: "memory-turn", text: "memory answer" });
-    return { result: { turn: { id: "memory-turn" } } };
-  }
-  if (method === "account/rateLimits/read") return { result: { rateLimits: { limitId: "codex", primary: { usedPercent: 1 } } } };
-  throw new Error(`unexpected memory request ${method}`);
-});
+let memoryLoaderCalls = 0;
+const memoryRpc = new FakeRpc(async (method) => { throw new Error(`memory must fail before RPC startup: ${method}`); });
 const memoryAdapter = new CodexAppServerAdapter({
   rpc: memoryRpc,
   threadmap: memoryStore,
   skipVersionCheck: true,
   workspaceResolver: (sessionId) => sessionId === "memory-session" ? workspace : null,
-  memoryLoader: async () => ({ hash: "memory-hash-1", text: "[DPSK MEMORY: UNTRUSTED CONTEXT]\nproject fact\n[END DPSK MEMORY]" }),
+  memoryLoader: async () => { memoryLoaderCalls += 1; return { hash: "memory-hash-1", text: "must not be sent" }; },
   config: { sandbox: "workspace-write", injectMemory: true, requestTimeoutMs: 30_000 },
 });
-const memoryChunks = await collect(memoryAdapter.stream({
-  sessionId: "memory-session",
-  model: "model-1",
-  messages: [assistant("memory-a0", "prior assistant conclusion"), user("memory-u1", "continue the task")],
-}));
-assert.equal(memoryChunks.at(-1).reason.kind, "stop");
-const memoryThreadStart = memoryRpc.requests.find((request) => request.method === "thread/start");
-const memoryTurnStart = memoryRpc.requests.find((request) => request.method === "turn/start");
-assert.equal(memoryThreadStart.params.cwd, workspace, "a DSH session workspace must override process.cwd()");
-assert.equal(memoryTurnStart.params.cwd, workspace);
-assert.deepEqual(memoryTurnStart.params.sandboxPolicy.writableRoots, [workspace]);
-assert.equal(Object.hasOwn(memoryThreadStart.params, "developerInstructions"), false, "memory must not become a high-priority developer instruction");
-assert.deepEqual(memoryTurnStart.params.additionalContext, {
-  "dpsk-memory": { kind: "untrusted", value: "[DPSK MEMORY: UNTRUSTED CONTEXT]\nproject fact\n[END DPSK MEMORY]" },
+await assert.rejects(
+  collect(memoryAdapter.stream({
+    sessionId: "memory-session",
+    model: "model-1",
+    messages: [assistant("memory-a0", "prior assistant conclusion"), user("memory-u1", "continue the task")],
+  })),
+  (error) => error.code === "protocol-error" && /unsupported by protocol 0\.149\.0/.test(error.message),
+);
+assert.equal(memoryRpc.requests.length, 0, "injectMemory must fail closed before starting Codex");
+assert.equal(memoryLoaderCalls, 0, "unsupported memory injection must not read the memory store");
+
+const contextRpc = new FakeRpc(async (method, _params, _options, client) => {
+  if (method === "initialize") return { result: {} };
+  if (method === "thread/start") return { result: { thread: { id: "context-thread" } } };
+  if (method === "turn/start") {
+    emitCompleted(client, { threadId: "context-thread", turnId: "context-turn", text: "context answer" });
+    return { result: { turn: { id: "context-turn" } } };
+  }
+  throw new Error(`unexpected context request ${method}`);
 });
-assert.match(memoryTurnStart.params.input[0].text, /Assistant: prior assistant conclusion/);
+const contextAdapter = new CodexAppServerAdapter({
+  rpc: contextRpc,
+  threadmap: new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-context-map-")), "threads.json")),
+  skipVersionCheck: true,
+  workspaceResolver: (sessionId) => sessionId === "context-session" ? workspace : null,
+  config: { sandbox: "workspace-write", injectMemory: false, requestTimeoutMs: 30_000 },
+});
+const contextChunks = await collect(contextAdapter.stream({
+  sessionId: "context-session",
+  model: "model-1",
+  messages: [assistant("context-a0", "prior assistant conclusion"), user("context-u1", "continue the task")],
+}));
+assert.equal(contextChunks.at(-1).reason.kind, "stop");
+const contextThreadStart = contextRpc.requests.find((request) => request.method === "thread/start");
+const contextTurnStart = contextRpc.requests.find((request) => request.method === "turn/start");
+assert.equal(contextThreadStart.params.cwd, workspace, "a DSH session workspace must override process.cwd()");
+assert.equal(contextTurnStart.params.cwd, workspace);
+assert.deepEqual(contextTurnStart.params.sandboxPolicy.writableRoots, [workspace]);
+assert.equal(Object.hasOwn(contextThreadStart.params, "developerInstructions"), false, "memory must not become a high-priority developer instruction");
+assert.equal(Object.hasOwn(contextTurnStart.params, "additionalContext"), false, "0.149.0 turn/start must not send additionalContext");
+assert.match(contextTurnStart.params.input[0].text, /Assistant: prior assistant conclusion/);
 
 const rateRequests = [];
 const rateRpc = new FakeRpc(async (method) => {
@@ -175,7 +192,7 @@ const mismatchAdapter = new CodexAppServerAdapter({
 assert.deepEqual(await mismatchAdapter.status(), {
   available: false,
   code: "protocol-mismatch",
-  message: "Codex protocol mismatch: expected 0.144.1, got 0.0.0",
+  message: "Codex protocol mismatch: expected 0.149.0, got 0.0.0",
 });
 assert.deepEqual(await mismatchAdapter.listModels(), []);
 assert.equal(mismatchRpc.requests.length, 0);
@@ -254,41 +271,6 @@ await Promise.all([
   collect(sharedThreadAdapter.stream({ sessionId: "shared-b", model: "model-1", workspace, messages: [user("shared-b-u1", "second turn")] })),
 ]);
 assert.equal(maxActiveTurns, 1, "different sessions that resolve to the same Codex thread must serialize turn/start");
-
-let memorySnapshot = { hash: "rotation-memory-a", text: "memory A" };
-let rotationThreadStarts = 0;
-let rotationTurns = 0;
-const rotationStore = new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-rotation-map-")), "threads.json"));
-const rotationRpc = new FakeRpc(async (method, params, _options, client) => {
-  if (method === "initialize") return { result: {} };
-  if (method === "thread/start") return { result: { thread: { id: `rotation-thread-${++rotationThreadStarts}` } } };
-  if (method === "thread/resume") throw new Error("a changed memory snapshot must create a new Codex thread");
-  if (method === "turn/start") {
-    const turnId = `rotation-turn-${++rotationTurns}`;
-    emitCompleted(client, { threadId: params.threadId, turnId, text: `rotation-answer-${rotationTurns}` });
-    return { result: { turn: { id: turnId } } };
-  }
-  throw new Error(`unexpected rotation request ${method}`);
-});
-const rotationAdapter = new CodexAppServerAdapter({
-  rpc: rotationRpc,
-  threadmap: rotationStore,
-  skipVersionCheck: true,
-  memoryLoader: async () => memorySnapshot,
-  config: { injectMemory: true, requestTimeoutMs: 30_000 },
-});
-await collect(rotationAdapter.stream({ sessionId: "rotation-session", model: "model-1", workspace, messages: [user("rotation-u1", "first memory turn")] }));
-memorySnapshot = { hash: "rotation-memory-b", text: "memory B" };
-await collect(rotationAdapter.stream({
-  sessionId: "rotation-session",
-  model: "model-1",
-  workspace,
-  messages: [user("rotation-u1", "first memory turn"), assistant("rotation-a1", "rotation-answer-1", "codex-chatgpt"), user("rotation-u2", "second memory turn")],
-}));
-const rotationEntry = await rotationStore.get("rotation-session");
-assert.equal(rotationThreadStarts, 2, "a changed memory hash must create a new thread instead of reusing old context");
-assert.equal(rotationEntry.providerEpoch, 2);
-assert.equal(rotationEntry.memorySnapshotHash, "rotation-memory-b");
 
 const cancelRpc = new FakeRpc(async (method) => {
   if (method === "initialize") return { result: {} };

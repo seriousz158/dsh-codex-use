@@ -1,32 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PermissionProfileListResponse",
-  "type": "object",
-  "required": [
-    "data"
-  ],
-  "properties": {
-    "data": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/PermissionProfileSummary"
-      }
-    },
-    "nextCursor": {
-      "description": "Opaque cursor to pass to the next call to continue after the last item. If None, there are no more items to return.",
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  },
   "definitions": {
     "PermissionProfileSummary": {
-      "type": "object",
-      "required": [
-        "allowed",
-        "id"
-      ],
       "properties": {
         "allowed": {
           "description": "Whether the effective requirements allow selecting this profile.",
@@ -43,7 +18,32 @@
           "description": "Available permission profile identifier.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "allowed",
+        "id"
+      ],
+      "type": "object"
     }
-  }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/definitions/PermissionProfileSummary"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "description": "Opaque cursor to pass to the next call to continue after the last item. If None, there are no more items to return.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "PermissionProfileListResponse",
+  "type": "object"
 }

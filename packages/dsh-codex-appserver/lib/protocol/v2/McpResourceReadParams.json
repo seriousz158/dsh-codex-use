@@ -1,12 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "McpResourceReadParams",
-  "type": "object",
-  "required": [
-    "server",
-    "uri"
-  ],
   "properties": {
+    "connectorId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "originCallId": {
+      "description": "Originating MCP tool call used to select the resource's app.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "server": {
       "type": "string"
     },
@@ -19,5 +26,11 @@
     "uri": {
       "type": "string"
     }
-  }
+  },
+  "required": [
+    "server",
+    "uri"
+  ],
+  "title": "McpResourceReadParams",
+  "type": "object"
 }

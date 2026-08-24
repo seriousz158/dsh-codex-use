@@ -1,10 +1,37 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreadSearchParams",
-  "type": "object",
-  "required": [
-    "searchTerm"
-  ],
+  "definitions": {
+    "SortDirection": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "type": "string"
+    },
+    "ThreadSearchSortKey": {
+      "enum": [
+        "created_at",
+        "updated_at",
+        "recency_at"
+      ],
+      "type": "string"
+    },
+    "ThreadSourceKind": {
+      "enum": [
+        "cli",
+        "vscode",
+        "exec",
+        "appServer",
+        "subAgent",
+        "subAgentReview",
+        "subAgentCompact",
+        "subAgentThreadSpawn",
+        "subAgentOther",
+        "unknown"
+      ],
+      "type": "string"
+    }
+  },
   "properties": {
     "archived": {
       "description": "Optional archived filter; when set to true, only archived threads are returned. If false or null, only non-archived threads are returned.",
@@ -22,19 +49,18 @@
     },
     "limit": {
       "description": "Optional page size; defaults to a reasonable server-side value.",
+      "format": "uint32",
+      "minimum": 0.0,
       "type": [
         "integer",
         "null"
-      ],
-      "format": "uint32",
-      "minimum": 0.0
+      ]
     },
     "searchTerm": {
       "description": "Required substring/full-text query for thread search.",
       "type": "string"
     },
     "sortDirection": {
-      "description": "Optional sort direction; defaults to descending (newest first).",
       "anyOf": [
         {
           "$ref": "#/definitions/SortDirection"
@@ -42,60 +68,34 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Optional sort direction; defaults to descending (newest first)."
     },
     "sortKey": {
-      "description": "Optional sort key; defaults to created_at.",
       "anyOf": [
         {
-          "$ref": "#/definitions/ThreadSortKey"
+          "$ref": "#/definitions/ThreadSearchSortKey"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Optional sort key; defaults to created_at."
     },
     "sourceKinds": {
       "description": "Optional source filter; when set, only sessions from these source kinds are returned. When omitted or empty, defaults to interactive sources.",
+      "items": {
+        "$ref": "#/definitions/ThreadSourceKind"
+      },
       "type": [
         "array",
         "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/ThreadSourceKind"
-      }
+      ]
     }
   },
-  "definitions": {
-    "SortDirection": {
-      "type": "string",
-      "enum": [
-        "asc",
-        "desc"
-      ]
-    },
-    "ThreadSortKey": {
-      "type": "string",
-      "enum": [
-        "created_at",
-        "updated_at",
-        "recency_at"
-      ]
-    },
-    "ThreadSourceKind": {
-      "type": "string",
-      "enum": [
-        "cli",
-        "vscode",
-        "exec",
-        "appServer",
-        "subAgent",
-        "subAgentReview",
-        "subAgentCompact",
-        "subAgentThreadSpawn",
-        "subAgentOther",
-        "unknown"
-      ]
-    }
-  }
+  "required": [
+    "searchTerm"
+  ],
+  "title": "ThreadSearchParams",
+  "type": "object"
 }

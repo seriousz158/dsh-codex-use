@@ -239,7 +239,8 @@ export function sandboxPolicy(mode, cwd) {
 export function approvalResponse(method) {
   if (method === "item/commandExecution/requestApproval" || method === "item/fileChange/requestApproval") return { decision: "decline" };
   if (method === "item/permissions/requestApproval") return { permissions: {} };
-  if (method === "applyPatchApproval" || method === "execCommandApproval") return { decision: "denied" };
+  if (method === "applyPatchApproval") return { decision: { denied: { rejection: "Codex approvals are disabled by DSH policy" } } };
+  if (method === "execCommandApproval") return { decision: { denied: { rejection: "Codex approvals are disabled by DSH policy" } } };
   throw new Error(`unsupported Codex approval request: ${method}`);
 }
 

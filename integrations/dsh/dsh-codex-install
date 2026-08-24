@@ -6,6 +6,7 @@ set -euo pipefail
 REPO_DIR="$(cd -- "$(dirname -- "$0")/../.." && pwd -P)"
 DSH_HOME_VALUE="${DSH_HOME:-$HOME/.dsh}"
 PACKAGE_DIR="$REPO_DIR/packages/dsh-codex-appserver"
+LEGACY_PACKAGE_DIR="${DSH_CODEX_LEGACY_PACKAGE_DIR:-}"
 PROFILE_NODE_MODULES="$DSH_HOME_VALUE/profiles/node_modules"
 PROFILE_LINK="$PROFILE_NODE_MODULES/dsh-codex-appserver"
 PACKAGE_LINK="$PACKAGE_DIR/node_modules"
@@ -15,7 +16,7 @@ WEB_PATCH="$DSH_HOME_VALUE/profiles/web/cordis.patch.yml"
 LEGACY_ID="codex-appserver"
 MANUAL_ID="codex-appserver-manual"
 
-DUPLICATE_GUARD="[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-appserver' && !e.disabled)"
+DUPLICATE_GUARD="[...ctx.loader.entries()].some((e) => e.options.id !== 'codex-appserver-manual' && e.options.name === 'dsh-codex-appserver' && !e.disabled)"
 
 die() {
   print -u2 -- "dsh-codex-install: $*"
@@ -24,6 +25,9 @@ die() {
 
 [[ "$DSH_HOME_VALUE" = /* ]] || die "DSH_HOME must be an absolute path: $DSH_HOME_VALUE"
 [[ -f "$PACKAGE_DIR/package.json" ]] || die "plugin package is missing: $PACKAGE_DIR"
+if [[ -n "$LEGACY_PACKAGE_DIR" && "$LEGACY_PACKAGE_DIR" != /* ]]; then
+  die "DSH_CODEX_LEGACY_PACKAGE_DIR must be an absolute path: $LEGACY_PACKAGE_DIR"
+fi
 
 mkdir -p "$PROFILE_NODE_MODULES"
 
@@ -49,6 +53,80 @@ ensure_link() {
   ln -s "$target" "$link"
 }
 
+link_target_path() {
+  local link="$1" raw base
+  raw="$(readlink -- "$link")" || return 1
+  if [[ "$raw" = /* ]]; then
+    base="$raw"
+  else
+    base="$(cd -- "$(dirname -- "$link")" && pwd -P)/$raw"
+  fi
+  python3 - "$base" <<'PY'
+import os
+import sys
+print(os.path.realpath(sys.argv[1]))
+PY
+}
+
+backup_link() {
+  local link="$1" stamp backup
+  stamp="$(date +%Y%m%d%H%M%S)"
+  backup="${link}.bak.${stamp}"
+  while [[ -e "$backup" || -L "$backup" ]]; do
+    stamp="$(date +%Y%m%d%H%M%S%N)"
+    backup="${link}.bak.${stamp}"
+  done
+  mv -- "$link" "$backup"
+  print "Backup: $backup"
+}
+
+ensure_profile_link() {
+  local link="$1" target="$2" expected actual
+  expected="$(cd -P -- "$target" && pwd -P)" || die "target does not resolve: $target"
+  if [[ -L "$link" ]]; then
+    actual="$(link_target_path "$link")" || actual=""
+    if [[ "$actual" == "$expected" ]]; then
+      return
+    fi
+    if [[ -n "$LEGACY_PACKAGE_DIR" ]]; then
+      local legacy
+      legacy="$(python3 - "$LEGACY_PACKAGE_DIR" <<'PY'
+import os
+import sys
+print(os.path.realpath(sys.argv[1]))
+PY
+)"
+      if [[ "$actual" == "$legacy" ]]; then
+        backup_link "$link"
+        ln -s "$target" "$link"
+        return
+      fi
+    fi
+    die "refusing to replace unexpected link: $link -> ${actual:-$(readlink -- "$link")}"
+  fi
+  [[ ! -e "$link" ]] || die "refusing to replace existing path: $link"
+  ln -s "$target" "$link"
+}
+
+ensure_package_dependency_link() {
+  local link="$1" target="$2" expected actual
+  expected="$(cd -P -- "$target" && pwd -P)" || die "target does not resolve: $target"
+  if [[ -L "$link" ]]; then
+    actual="$(link_target_path "$link")" || actual=""
+    if [[ "$actual" == "$expected" ]]; then
+      return
+    fi
+    if [[ -z "$actual" || ! -d "$actual" ]]; then
+      backup_link "$link"
+      ln -s "$target" "$link"
+      return
+    fi
+    die "refusing to replace unexpected package dependency link: $link -> $actual"
+  fi
+  [[ ! -e "$link" ]] || die "refusing to replace existing path: $link"
+  ln -s "$target" "$link"
+}
+
 registration_count() {
   local patch="$1"
   local needle="$2"
@@ -69,15 +147,24 @@ migrate_legacy_registration() {
   HOST_PATCH="$HOST_PATCH" TEMPORARY="$temporary" python3 - <<'PY'
 from pathlib import Path
 import os
+import re
 
 path = Path(os.environ["HOST_PATCH"])
 temporary = Path(os.environ["TEMPORARY"])
 text = path.read_text()
-old = "- insert:\n    - id: codex-appserver\n      name: dsh-codex-appserver"
-new = "- insert:\n    - id: codex-appserver-manual\n      name: dsh-codex-appserver\n      disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.name === 'dsh-codex-appserver' && !e.disabled)\""
-if text.count(old) != 1:
+pattern = re.compile(r"(?m)^(?P<indent>[ \t]*)- id: codex-appserver[ \t]*\n(?P<name_indent>[ \t]+)name: dsh-codex-appserver[ \t]*\n")
+matches = list(pattern.finditer(text))
+if len(matches) != 1:
     raise SystemExit("legacy registration is not the exact migration shape")
-temporary.write_text(text.replace(old, new, 1))
+match = matches[0]
+indent = match.group("indent")
+name_indent = match.group("name_indent")
+new = (
+    f"{indent}- id: codex-appserver-manual\n"
+    f"{name_indent}name: dsh-codex-appserver\n"
+    f"{name_indent}disabled: !!js \"[...ctx.loader.entries()].some((e) => e.options.id !== 'codex-appserver-manual' && e.options.name === 'dsh-codex-appserver' && !e.disabled)\"\n"
+)
+temporary.write_text(text[:match.start()] + new + text[match.end():])
 PY
   mv "$temporary" "$HOST_PATCH"
   print "Migrated legacy $LEGACY_ID registration to $MANUAL_ID"
@@ -99,17 +186,8 @@ append_host_registration() {
   mv "$temporary" "$HOST_PATCH"
 }
 
-ensure_link "$PROFILE_LINK" "$PACKAGE_DIR"
-if [[ -L "$PACKAGE_LINK" ]]; then
-  package_link_actual="$(cd -P -- "$PACKAGE_LINK" && pwd -P)" || die "link target does not resolve: $PACKAGE_LINK"
-  package_link_expected="$(cd -P -- "$PACKAGE_NODE_MODULES_TARGET" && pwd -P)" || die "target does not resolve: $PACKAGE_NODE_MODULES_TARGET"
-  if [[ "$package_link_actual" != "$package_link_expected" ]]; then
-    [[ "$package_link_actual" == */profiles/node_modules ]] || die "refusing to replace unexpected package dependency link: $PACKAGE_LINK -> $package_link_actual"
-    ln -sfn "$PACKAGE_NODE_MODULES_TARGET" "$PACKAGE_LINK"
-  fi
-else
-  ensure_link "$PACKAGE_LINK" "$PACKAGE_NODE_MODULES_TARGET"
-fi
+ensure_profile_link "$PROFILE_LINK" "$PACKAGE_DIR"
+ensure_package_dependency_link "$PACKAGE_LINK" "$PACKAGE_NODE_MODULES_TARGET"
 
 legacy_ids="$(registration_count "$HOST_PATCH" "id: $LEGACY_ID")"
 legacy_names="$(registration_count "$HOST_PATCH" 'name: dsh-codex-appserver')"

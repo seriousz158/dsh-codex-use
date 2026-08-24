@@ -15,10 +15,12 @@ const compatibility = await readJson("packages/dsh-codex-appserver/compatibility
 const appserverRange = appserver.peerDependencies["@deepseek-ai/dsh-llm"];
 const searchRange = search.peerDependencies["@deepseek-ai/dsh-llm"];
 
-assert.equal(rootManifest.version, "0.2.3");
-assert.equal(appserver.version, "0.2.3");
+assert.equal(rootManifest.version, "0.2.4");
+assert.equal(appserver.version, "0.2.4");
 assert.equal(search.version, "0.1.0");
 assert.equal(appserver.version, compatibility.pluginVersion);
+assert.equal(compatibility.codex.cliVersion, "0.149.0");
+assert.equal(compatibility.codex.protocol, "v2");
 assert.equal(compatibility.dsh.supported, appserverRange);
 assert.equal(searchRange, appserverRange);
 for (const name of ["@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-settings"]) {

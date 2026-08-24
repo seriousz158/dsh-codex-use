@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.2.3",
+  "pluginVersion": "0.2.4",
   "node": {
     "minimum": ">=22"
   },
@@ -12,10 +12,10 @@
     ]
   },
   "codex": {
-    "cliVersion": "0.144.1",
+    "cliVersion": "0.149.0",
     "protocol": "v2",
     "schemaFile": "lib/protocol/codex_app_server_protocol.v2.schemas.json",
-    "schemaSha256": "5c6886f419036d2e09aab72598b94c5bf09250e850ae067cdb7179f8a22f5065"
+    "schemaSha256": "6f76cce25156d405f1da54f205751e38f7b9eb42246ac0742b9958dd60275350"
   },
   "capabilities": {
     "doctorOffline": true,

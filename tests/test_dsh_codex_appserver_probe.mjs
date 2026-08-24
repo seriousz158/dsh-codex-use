@@ -12,8 +12,10 @@ import {
 } from "../tools/codex-appserver-probe.mjs";
 
 const root = new URL("..", import.meta.url);
-const fixturePath = new URL("../tools/fixtures/codex-appserver-0.144.1.json", import.meta.url);
-const contractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.144.1.json", import.meta.url);
+const fixturePath = new URL("../tools/fixtures/codex-appserver-0.149.0.json", import.meta.url);
+const contractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.149.0.json", import.meta.url);
+const historicalFixturePath = new URL("../tools/fixtures/codex-appserver-0.144.1.json", import.meta.url);
+const historicalContractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.144.1.json", import.meta.url);
 
 const sensitive = {
   account: {
@@ -68,6 +70,16 @@ assert.equal(Object.hasOwn(contracts.turnCompleted.params, "usage"), false);
 assert.equal(contracts.tokenUsageUpdated.method, "thread/tokenUsage/updated");
 assert.ok(contracts.tokenUsageUpdated.params.tokenUsage.last);
 assert.ok(contracts.tokenUsageUpdated.params.tokenUsage.total);
+assert.equal(Object.hasOwn(contracts.rateLimitSparseUpdate.params.rateLimits, "spendControlReached"), true);
+assert.equal(Object.hasOwn(contracts.rateLimitSparseUpdate.params.rateLimits, "rateLimitReachedType"), true);
+
+// The 0.144.1 artifacts remain replay-only history, not a second runtime
+// compatibility promise.
+const historicalFixture = JSON.parse(await readFile(historicalFixturePath, "utf8"));
+const historicalContracts = JSON.parse(await readFile(historicalContractsPath, "utf8"));
+assert.equal(historicalFixture.codexCliVersion, "0.144.1");
+assert.equal(historicalContracts.codexCliVersion, "0.144.1");
+assertReadOnlyTrace(historicalFixture.frames);
 
 const probeDirectory = await mkdtemp(join(tmpdir(), "dsh-codex-probe-"));
 const fakeCodex = join(probeDirectory, "fake-codex.mjs");

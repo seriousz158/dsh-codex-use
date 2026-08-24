@@ -8,8 +8,9 @@
 - 不监听本地 HTTP 端口，也不伪装成 OpenAI-compatible API
 - DSH 的默认 provider 不会被修改；用户选择前仍使用原来的 DeepSeek provider
 
-> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。插件的协议 schema 固定于
-> Codex CLI `0.144.1`，升级 Codex CLI 后应先重新生成并审查 schema。
+> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。`0.2.4` 的协议 schema
+> 固定于 Codex CLI `0.149.0`，通过 `--experimental` 生成；升级 Codex CLI 后应先
+> 重新生成并审查 schema。
 
 ## 标准安装（推荐）
 
@@ -29,7 +30,9 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 - DSH 会话可以选择 Codex 模型，并复用 DSH 的流式消息、取消和 usage 展示。
 - Codex 会话内的命令、文件变更和其它工具由 Codex App Server 自己执行；插件不会把同一批活动翻译成 DSH tool-call 再执行一次。
 - 默认使用 `workspace-write` sandbox、`approvalPolicy: never`、临时线程（`ephemeralThreads: true`）。
-- 默认不注入 DSH 长期记忆；只有显式设置 `injectMemory: true` 才会读取本地记忆快照。
+- 默认不注入 DSH 长期记忆；在 Codex `0.149.0` 协议下显式设置 `injectMemory: true`
+  会 fail-closed 为 `protocol-error`，不会读取或发送记忆，也不会提升为
+  `developerInstructions`。
 - 额度行只展示 Codex 官方 `account/rateLimits/read` 数据；读取失败时明确显示不可用，不估算额度。
 - 插件不会读取或复制 `~/.codex/auth.json`，登录态由 Codex CLI 管理。
 - 不做静默降级或自动切换到 DeepSeek。
@@ -44,12 +47,22 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 | --- | --- |
 | Node.js | `>=22` |
 | DSH | `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0`；已验证 `0.1.0-rc.7`、`0.1.1-rc.2` |
-| Codex CLI | `0.144.1` |
+| Codex CLI | `0.149.0` |
 | 运行环境 | macOS + zsh（安装脚本） |
 
-`0.2.3` 只支持 Codex CLI `0.144.1`。其它版本（例如 `0.149.0`）会 fail-closed
-为 `protocol-mismatch`，不会继续启动请求。额度 live gate 需要可用的
-`0.144.1` 二进制；没有该二进制时只提供 fixture/离线验证，不伪造额度状态。
+`0.2.4` 只支持 Codex CLI `0.149.0`。其它版本（包括历史 `0.144.1`）会
+fail-closed 为 `protocol-mismatch`，不会继续启动请求。`0.144.1` 只用于历史
+fixture 回放，不宣称同一构建双版本运行时兼容。
+
+协议刷新（要求 `/opt/homebrew/bin/codex --version` 为 `0.149.0`）可重复执行：
+
+```zsh
+npm run refresh:protocol
+```
+
+刷新工具会使用 `codex app-server generate-json-schema --experimental` 和
+`generate-ts --experimental`，校验 `lib/protocol.js` 的 schema 映射并输出文件清单
+及 v2 schema SHA-256。
 
 ## 旧版手工安装迁移
 
@@ -73,6 +86,18 @@ cd dsh-codex-use
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}" \
   zsh integrations/dsh/dsh-codex-install
 ```
+
+从旧活动插件目录迁移时必须显式声明旧目录；安装器只会原子备份精确匹配的旧活动
+软链，未知目标、非软链路径和重复注册均 fail-closed：
+
+```zsh
+DSH_HOME=/path/to/deepseek-harness/.dsh \
+DSH_CODEX_LEGACY_PACKAGE_DIR=/path/to/deepseek-harness/packages/dsh-codex-appserver \
+zsh integrations/dsh/dsh-codex-install
+```
+
+安装器会保留旧插件软链、旧 package dependency 软链和 `cordis.patch.yml` 的带时间戳
+备份；重复执行不会添加第二个 loader。
 
 安装器会：
 
@@ -166,8 +191,10 @@ npm run scan:secrets
 
 ## 版本说明
 
-`0.2.3` 增加双 runtime peer 契约（覆盖 DSH `rc.7` 和 `rc.2`），并保留官方 DSH Bundle、doctor、revision-fenced 设置卡、额度状态模型、Fast Mode 和本地图片输入。协议 schema 来自 Codex CLI `0.144.1`；如果
-Codex App Server 协议发生变化，应先更新 schema、fixture 和协议测试，再发布新版本。
+`0.2.4` 将运行时兼容目标切换到 Codex CLI `0.149.0`，刷新 `--experimental`
+schema/TS 产物，适配新的额度 bucket、套餐/模型元数据和 Fast Mode service tier，
+并对 `injectMemory` 保持 fail-closed。`0.144.1` 仅保留为历史 fixture；如果 Codex
+App Server 协议再次变化，应先更新 schema、fixture 和协议测试，再发布新版本。
 
 This project is distributed through GitHub source installs and GitHub Releases.
 It is not published to npm. Fast Mode is schema-gated and depends on upstream

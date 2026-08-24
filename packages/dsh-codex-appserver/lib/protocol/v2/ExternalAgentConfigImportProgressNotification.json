@@ -1,30 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExternalAgentConfigImportProgressNotification",
-  "type": "object",
-  "required": [
-    "importId",
-    "itemTypeResults"
-  ],
-  "properties": {
-    "importId": {
-      "type": "string"
-    },
-    "itemTypeResults": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ExternalAgentConfigImportTypeResult"
-      }
-    }
-  },
   "definitions": {
     "ExternalAgentConfigImportItemTypeFailure": {
-      "type": "object",
-      "required": [
-        "failureStage",
-        "itemType",
-        "message"
-      ],
       "properties": {
         "cwd": {
           "type": [
@@ -52,14 +29,22 @@
             "string",
             "null"
           ]
+        },
+        "subErrorType": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "required": [
+        "failureStage",
+        "itemType",
+        "message"
+      ],
+      "type": "object"
     },
     "ExternalAgentConfigImportItemTypeSuccess": {
-      "type": "object",
-      "required": [
-        "itemType"
-      ],
       "properties": {
         "cwd": {
           "type": [
@@ -81,36 +66,47 @@
             "string",
             "null"
           ]
+        },
+        "title": {
+          "default": null,
+          "description": "Original title for an imported session; null for other item types.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
-      }
+      },
+      "required": [
+        "itemType"
+      ],
+      "type": "object"
     },
     "ExternalAgentConfigImportTypeResult": {
-      "type": "object",
-      "required": [
-        "failures",
-        "itemType",
-        "successes"
-      ],
       "properties": {
         "failures": {
-          "type": "array",
           "items": {
             "$ref": "#/definitions/ExternalAgentConfigImportItemTypeFailure"
-          }
+          },
+          "type": "array"
         },
         "itemType": {
           "$ref": "#/definitions/ExternalAgentConfigMigrationItemType"
         },
         "successes": {
-          "type": "array",
           "items": {
             "$ref": "#/definitions/ExternalAgentConfigImportItemTypeSuccess"
-          }
+          },
+          "type": "array"
         }
-      }
+      },
+      "required": [
+        "failures",
+        "itemType",
+        "successes"
+      ],
+      "type": "object"
     },
     "ExternalAgentConfigMigrationItemType": {
-      "type": "string",
       "enum": [
         "AGENTS_MD",
         "CONFIG",
@@ -120,8 +116,27 @@
         "SUBAGENTS",
         "HOOKS",
         "COMMANDS",
+        "MEMORY",
         "SESSIONS"
-      ]
+      ],
+      "type": "string"
     }
-  }
+  },
+  "properties": {
+    "importId": {
+      "type": "string"
+    },
+    "itemTypeResults": {
+      "items": {
+        "$ref": "#/definitions/ExternalAgentConfigImportTypeResult"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "importId",
+    "itemTypeResults"
+  ],
+  "title": "ExternalAgentConfigImportProgressNotification",
+  "type": "object"
 }
