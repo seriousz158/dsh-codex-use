@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-use",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "OpenAI Codex App Server provider for DeepSeek Harness",
   "type": "module",

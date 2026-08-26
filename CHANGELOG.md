@@ -1,13 +1,19 @@
 # Changelog
 
+## 0.2.5 — 2026-08-26
+
+- Treat a successful ChatGPT `account/read` response with
+  `requiresOpenaiAuth: true` as authenticated when an account is present.
+- Keep explicit authentication errors and account-less auth signals as
+  `reauth-required`, while preserving quota refresh and stale-snapshot behavior.
+- Distribution remains via GitHub source/Releases; no `npm publish`.
+
 ## 0.2.4 — 2026-08-24
 
 - Refresh the vendored App Server JSON Schema and TypeScript protocol artifacts from
   Codex CLI `0.149.0` with `--experimental`.
 - Adapt the quota and model contracts to the new `rateLimitsByLimitId`, spend-control,
   service-tier, and model metadata fields while exposing only the public `codex` bucket.
-- Treat a successful ChatGPT `account/read` result with `requiresOpenaiAuth: true` as
-  authenticated; only an account-less auth signal or explicit auth error is `reauth-required`.
 - Keep `injectMemory` fail-closed for this protocol; no memory is promoted to
   `developerInstructions` or sent as an unsupported turn field.
 - Make the portable installer isolate its tests, migrate only an explicitly declared

@@ -8,7 +8,7 @@
 - 不监听本地 HTTP 端口，也不伪装成 OpenAI-compatible API
 - DSH 的默认 provider 不会被修改；用户选择前仍使用原来的 DeepSeek provider
 
-> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。`0.2.4` 的协议 schema
+> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。`0.2.5` 的协议 schema
 > 固定于 Codex CLI `0.149.0`，通过 `--experimental` 生成；升级 Codex CLI 后应先
 > 重新生成并审查 schema。
 
@@ -50,7 +50,7 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 | Codex CLI | `0.149.0` |
 | 运行环境 | macOS + zsh（安装脚本） |
 
-`0.2.4` 只支持 Codex CLI `0.149.0`。其它版本（包括历史 `0.144.1`）会
+`0.2.5` 只支持 Codex CLI `0.149.0`。其它版本（包括历史 `0.144.1`）会
 fail-closed 为 `protocol-mismatch`，不会继续启动请求。`0.144.1` 只用于历史
 fixture 回放，不宣称同一构建双版本运行时兼容。
 
@@ -191,9 +191,11 @@ npm run scan:secrets
 
 ## 版本说明
 
-`0.2.4` 将运行时兼容目标切换到 Codex CLI `0.149.0`，刷新 `--experimental`
-schema/TS 产物，适配新的额度 bucket、套餐/模型元数据和 Fast Mode service tier，
-并对 `injectMemory` 保持 fail-closed。`0.144.1` 仅保留为历史 fixture；如果 Codex
+`0.2.5` 延续 Codex CLI `0.149.0` 运行时兼容目标，并修复已认证 ChatGPT
+账户被误报为 `reauth-required` 的额度读取问题。`0.2.4` 将运行时兼容目标切换到
+Codex CLI `0.149.0`，刷新 `--experimental` schema/TS 产物，适配新的额度 bucket、
+套餐/模型元数据和 Fast Mode service tier，并对 `injectMemory` 保持 fail-closed。
+`0.144.1` 仅保留为历史 fixture；如果 Codex
 App Server 协议再次变化，应先更新 schema、fixture 和协议测试，再发布新版本。
 
 This project is distributed through GitHub source installs and GitHub Releases.
