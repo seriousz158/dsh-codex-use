@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.5 — 2026-08-26
+
+- Treat a successful ChatGPT `account/read` response with
+  `requiresOpenaiAuth: true` as authenticated when an account is present.
+- Keep explicit authentication errors and account-less auth signals as
+  `reauth-required`, while preserving quota refresh and stale-snapshot behavior.
+- Distribution remains via GitHub source/Releases; no `npm publish`.
+
 ## 0.2.4 — 2026-08-24
 
 - Refresh the vendored App Server JSON Schema and TypeScript protocol artifacts from

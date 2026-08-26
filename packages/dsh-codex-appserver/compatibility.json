@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.2.4",
+  "pluginVersion": "0.2.5",
   "node": {
     "minimum": ">=22"
   },

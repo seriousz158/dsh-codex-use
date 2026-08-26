@@ -21,7 +21,7 @@ bundle patch mounts the host provider; the client manifest injects the UI.
 - Codex CLI `0.149.0` App Server protocol generated with `--experimental`
 - Codex CLI `0.144.1` is retained only as a historical replay fixture
 
-Release `0.2.4` supports Codex CLI `0.149.0` only. Other versions fail closed
+Release `0.2.5` supports Codex CLI `0.149.0` only. Other versions fail closed
 with `protocol-mismatch`. This project is distributed through GitHub source
 installs and GitHub Releases; it is not published to npm.
 
