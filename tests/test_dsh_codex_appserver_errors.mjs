@@ -40,8 +40,13 @@ assert.deepEqual(serializeCodexError(attachmentFailure), {
   retryable: false,
 });
 
-assert.equal(isExplicitReauthSignal({ result: { requiresOpenaiAuth: true } }), true);
+assert.equal(isExplicitReauthSignal({ result: { account: null, requiresOpenaiAuth: true } }), true);
+assert.equal(isExplicitReauthSignal({ result: { account: {}, requiresOpenaiAuth: true } }), true);
+assert.equal(isExplicitReauthSignal({ result: { account: "", requiresOpenaiAuth: true } }), true);
+assert.equal(isExplicitReauthSignal({ result: { account: { type: "chatgpt", email: null, planType: "prolite" }, requiresOpenaiAuth: true } }), false);
+assert.equal(isExplicitReauthSignal({ result: { account: "chatgpt", requiresOpenaiAuth: true } }), false);
 assert.equal(isExplicitReauthSignal({ error: { code: "authentication_required" } }), true);
+assert.equal(isExplicitReauthSignal({ result: { account: { type: "chatgpt" }, requiresOpenaiAuth: false }, error: { code: "authentication_required" } }), true);
 assert.equal(isExplicitReauthSignal({ error: { code: "network_error", message: "auth endpoint unavailable" } }), false);
 
 console.log("dsh-codex app-server error model tests passed");

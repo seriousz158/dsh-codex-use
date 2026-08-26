@@ -68,7 +68,14 @@ export function toLlmError(error, fallbackCode = "turn-failed", overrides = {}) 
 
 export function isExplicitReauthSignal(value) {
   if (!value || typeof value !== "object") return false;
-  if (value.requiresOpenaiAuth === true || value.result?.requiresOpenaiAuth === true) return true;
+  const accountResult = value.result && typeof value.result === "object" ? value.result : value;
+  const account = accountResult.account;
+  const hasAccount = typeof account === "string"
+    ? account.trim().length > 0
+    : Boolean(account && typeof account === "object" && !Array.isArray(account) && Object.keys(account).length > 0);
   const code = value.error?.code ?? value.code;
-  return typeof code === "string" && EXPLICIT_REAUTH_CODES.has(code);
+  if (typeof code === "string" && EXPLICIT_REAUTH_CODES.has(code)) return true;
+  // Codex can set requiresOpenaiAuth=true on a successful ChatGPT account/read
+  // response. Only an account-less signal means that reauthentication is needed.
+  return accountResult.requiresOpenaiAuth === true && !hasAccount;
 }
