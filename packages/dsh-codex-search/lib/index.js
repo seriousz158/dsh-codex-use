@@ -1,12 +1,11 @@
 import { LlmAdapter, LlmError } from "@deepseek-ai/dsh-llm";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 import z from "@deepseek-ai/schemastery";
 import { safeSearchFetch } from "./remote-search.js";
 
 export const name = "dsh-codex-search";
 export const inject = ["llm", "settings"];
 export const PROVIDER = "codex-search";
-export const NS = settingsNamespace("llm-codex-search");
+export const NS = "llm-codex-search";
 export const Config = z.object({
   enabled: z.boolean().default(false),
   endpoint: z.string().default(""),

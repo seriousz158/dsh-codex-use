@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { launchUrlFromOutput, cleanLaunchUrl, redactLaunchTokens } from "../tools/check-dsh-host-surface.mjs";
+const url = "http://127.0.0.1:12345/?token=synthetic-test-only";
+assert.equal(launchUrlFromOutput(`noise\ndsh web: ${url}\n`), url);
+assert.equal(launchUrlFromOutput("dsh web: http://127.0.0.1:12345\n"), "http://127.0.0.1:12345");
+assert.equal(launchUrlFromOutput("dsh web: http://127.0.0.1:12345"), null, "wait for a complete launch line");
+assert.equal(launchUrlFromOutput("noise http://127.0.0.1:12345"), null);
+assert.equal(launchUrlFromOutput("dsh web: http://example.com:12345/?token=x"), null);
+assert.equal(cleanLaunchUrl(url), "http://127.0.0.1:12345/");
+assert.ok(!redactLaunchTokens(`open ${url} failed`).includes("synthetic-test-only"));
+console.log("Host launch authentication and redaction tests passed");

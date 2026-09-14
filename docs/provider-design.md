@@ -350,3 +350,22 @@ DSH 的 system prompt 含 DSH 工具说明，不转发给 Codex。`injectMemory`
 3. rc.8+ runtime 的非阻断兼容探测。
 
 （`thread/resume` 仅属于显式持久化模式，不是默认行为。）
+
+## DSH 0.1.5-rc.1 compatibility
+
+Use the namespace string directly; current Host settings registration validates
+it. The exact tested RC is explicitly included in peer ranges and the compatibility
+manifest. The previous dependency suite remains available, and
+`test:runtime-imports` checks the package entry against actual Host dependencies
+(`DSH_RUNTIME_NODE_MODULES`, optionally `DSH_EXPECTED_VERSION`). Import tests are
+not substitutes for real provider generation tests.
+
+The Host Surface runner preserves the official loopback launch URL for the
+browser authentication exchange, checks unauthenticated root rejection for
+new Hosts, and emits only a clean URL. Diagnostics redact launch tokens; never
+turn off browser authentication to make a test pass.
+
+The unused `dsh-client-runtime` bootstrap dependency was removed: the package
+was retired before 0.1.5. The UI consumes the Host-provided slots/remote services,
+not that legacy module. Current CI pins the transitive DSH peer graph to rc.1
+instead of accidentally combining rc.1 and rc.2.

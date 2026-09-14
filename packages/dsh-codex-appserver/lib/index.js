@@ -1,5 +1,4 @@
 import z from "@deepseek-ai/schemastery";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { CodexAppServerAdapter } from "./adapter.js";
 import { PROVIDER, PROVIDER_NAME } from "./protocol.js";
 import { CodexAppServerService } from "./ratelimits.js";
@@ -8,7 +7,7 @@ import { toLlmError } from "./errors.js";
 
 export const name = "dsh-codex-appserver";
 export const inject = ["llm", "settings", "sessions", "attachments"];
-export const NS = settingsNamespace("llm-codex-appserver");
+export const NS = "llm-codex-appserver";
 export const Config = z.object({
   codexBin: z.string().default(""),
   sandbox: z.union(["read-only", "workspace-write"]).default("workspace-write"),
