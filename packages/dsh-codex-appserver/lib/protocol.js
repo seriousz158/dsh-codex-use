@@ -231,6 +231,7 @@ export function assertAbsoluteDirectory(cwd) {
 }
 
 export function sandboxPolicy(mode, cwd) {
+  if (mode === "danger-full-access") return { type: "dangerFullAccess" };
   if (mode === "read-only") return { type: "readOnly", networkAccess: false };
   if (mode === "workspace-write") return { type: "workspaceWrite", networkAccess: false, writableRoots: [cwd] };
   throw new Error(`unsupported Codex sandbox: ${mode}`);

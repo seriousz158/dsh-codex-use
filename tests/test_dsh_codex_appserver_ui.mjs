@@ -90,6 +90,9 @@ await plugin.apply({
         register(metadata, value) { components.push({ metadata, value }); return value; },
       },
       settingsScope: { bind() { return fakeSettingsScope; } },
+      inject(dependencies, callback) {
+        if (dependencies.includes("settingsScope")) callback(this);
+      },
     });
   },
 });
@@ -98,6 +101,28 @@ const quotaComponent = components.find(({ metadata }) => metadata.id === "codex-
 const settingsComponent = components.find(({ metadata }) => metadata.key === "llm-codex-appserver")?.value;
 assert.ok(quotaComponent, "quota row must remain in settings.general.item");
 assert.ok(settingsComponent, "settings card must be registered in settings.plugin.item");
+
+const modernComponents = [];
+await plugin.apply({
+  remote: { async $mount() { return () => {}; } },
+  effect() {},
+  inject(_dependencies, callback) {
+    const providerCtx = {
+      remote: { codexAppserver: fakeService },
+      slots: {
+        inject(_slot, register) { register(); },
+        register(metadata, value) { modernComponents.push({ metadata, value }); return value; },
+      },
+      configForms: { get(namespace) { assert.equal(namespace, "codex-appserver"); return fakeSettingsScope; } },
+      inject(dependencies, nestedCallback) {
+        if (dependencies.includes("configForms")) nestedCallback(this);
+      },
+    };
+    callback(providerCtx);
+  },
+});
+assert.ok(modernComponents.some(({ metadata }) => metadata.name === "settings.plugins.tab" && metadata.id === "codex-appserver"), "DSH 0.1.7 must expose the settings card in the Plugins tab");
+assert.ok(modernComponents.some(({ metadata }) => metadata.name === "settings.general.item" && metadata.id === "codex-appserver"), "DSH 0.1.7 must retain the quota row");
 
 function render() {
   hookIndex = 0;

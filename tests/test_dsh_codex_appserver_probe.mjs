@@ -10,10 +10,11 @@ import {
   runProbe,
   sanitizeFrame,
 } from "../tools/codex-appserver-probe.mjs";
+import { validateNotification } from "../packages/dsh-codex-appserver/lib/protocol.js";
 
 const root = new URL("..", import.meta.url);
-const fixturePath = new URL("../tools/fixtures/codex-appserver-0.149.0.json", import.meta.url);
-const contractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.149.0.json", import.meta.url);
+const fixturePath = new URL("../tools/fixtures/codex-appserver-0.158.0.json", import.meta.url);
+const contractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.158.0.json", import.meta.url);
 const historicalFixturePath = new URL("../tools/fixtures/codex-appserver-0.144.1.json", import.meta.url);
 const historicalContractsPath = new URL("../tools/fixtures/codex-appserver-contract-samples-0.144.1.json", import.meta.url);
 
@@ -72,6 +73,9 @@ assert.ok(contracts.tokenUsageUpdated.params.tokenUsage.last);
 assert.ok(contracts.tokenUsageUpdated.params.tokenUsage.total);
 assert.equal(Object.hasOwn(contracts.rateLimitSparseUpdate.params.rateLimits, "spendControlReached"), true);
 assert.equal(Object.hasOwn(contracts.rateLimitSparseUpdate.params.rateLimits, "rateLimitReachedType"), true);
+for (const sample of [contracts.turnCompleted, contracts.tokenUsageUpdated, contracts.rateLimitSparseUpdate]) {
+  assert.deepEqual(validateNotification(sample.method, sample.params), { ok: true }, `${sample.method} must match the current Codex schema`);
+}
 
 // The 0.144.1 artifacts remain replay-only history, not a second runtime
 // compatibility promise.

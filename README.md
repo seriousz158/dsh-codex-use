@@ -8,8 +8,8 @@
 - 不监听本地 HTTP 端口，也不伪装成 OpenAI-compatible API
 - DSH 的默认 provider 不会被修改；用户选择前仍使用原来的 DeepSeek provider
 
-> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。`0.2.5` 的协议 schema
-> 固定于 Codex CLI `0.149.0`，通过 `--experimental` 生成；升级 Codex CLI 后应先
+> 当前仓库发布的是 source/GitHub 版本，不是 npm 发布包。`0.2.7` 的协议 schema
+> 固定于 Codex CLI `0.158.0`，通过 `--experimental` 生成；升级 Codex CLI 后应先
 > 重新生成并审查 schema。
 
 ## 标准安装（推荐）
@@ -30,7 +30,7 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 - DSH 会话可以选择 Codex 模型，并复用 DSH 的流式消息、取消和 usage 展示。
 - Codex 会话内的命令、文件变更和其它工具由 Codex App Server 自己执行；插件不会把同一批活动翻译成 DSH tool-call 再执行一次。
 - 默认使用 `workspace-write` sandbox、`approvalPolicy: never`、临时线程（`ephemeralThreads: true`）。
-- 默认不注入 DSH 长期记忆；在 Codex `0.149.0` 协议下显式设置 `injectMemory: true`
+- 默认不注入 DSH 长期记忆；在 Codex `0.158.0` 协议下显式设置 `injectMemory: true`
   会 fail-closed 为 `protocol-error`，不会读取或发送记忆，也不会提升为
   `developerInstructions`。
 - 额度行只展示 Codex 官方 `account/rateLimits/read` 数据；读取失败时明确显示不可用，不估算额度。
@@ -46,15 +46,15 @@ dsh plugin --profile web add github:seriousz158/dsh-codex-use#path:/packages/dsh
 | 组件 | 版本/要求 |
 | --- | --- |
 | Node.js | `>=22` |
-| DSH | `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0`；已验证 `0.1.0-rc.7`、`0.1.1-rc.2` |
-| Codex CLI | `0.149.0` |
+| DSH | `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0`；已验证 `0.1.0-rc.7`、`0.1.1-rc.2`、`0.1.5-rc.2`、`0.1.7-rc.2` |
+| Codex CLI | `0.158.0` |
 | 运行环境 | macOS + zsh（安装脚本） |
 
-`0.2.5` 只支持 Codex CLI `0.149.0`。其它版本（包括历史 `0.144.1`）会
+`0.2.7` 只支持 Codex CLI `0.158.0`。其它版本（包括历史 `0.144.1`）会
 fail-closed 为 `protocol-mismatch`，不会继续启动请求。`0.144.1` 只用于历史
 fixture 回放，不宣称同一构建双版本运行时兼容。
 
-协议刷新（要求 `/opt/homebrew/bin/codex --version` 为 `0.149.0`）可重复执行：
+协议刷新（要求 `codex --version` 为 `0.158.0`，可用 `CODEX_BIN` 指定路径）可重复执行：
 
 ```zsh
 npm run refresh:protocol
@@ -190,6 +190,10 @@ npm run scan:secrets
 - 当前不发布 npm 包，市场使用 GitHub `#path:/packages/dsh-codex-appserver` source 安装。
 
 ## 版本说明
+
+`0.2.7` 兼容 DSH `0.1.7-rc.2` 的新设置表单和客户端 RPC codec，保留旧版 DSH
+设置路径；断流续接与额度回归仍通过。`0.2.6` 将运行时兼容目标更新到 Codex CLI `0.158.0`，刷新协议 schema/TS，
+并验证只读探针与回归测试。`0.149.0` 保留为历史 fixture。
 
 `0.2.5` 延续 Codex CLI `0.149.0` 运行时兼容目标，并修复已认证 ChatGPT
 账户被误报为 `reauth-required` 的额度读取问题。`0.2.4` 将运行时兼容目标切换到

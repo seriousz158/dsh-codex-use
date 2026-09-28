@@ -29,6 +29,13 @@
     }
   },
   "properties": {
+    "daybreakEnabled": {
+      "description": "Save the client's Daybreak choice for this persistent thread. Omitted or null leaves it unchanged. This does not select a turn's `cyberAccessProgram` or grant access.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "gitInfo": {
       "anyOf": [
         {

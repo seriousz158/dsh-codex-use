@@ -535,6 +535,34 @@
   },
   "oneOf": [
     {
+      "description": "A device-authenticated approval; accepted responses contain the proof in `content`.",
+      "properties": {
+        "_meta": true,
+        "challenge": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "openai/userVerification"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "challenge",
+        "description",
+        "mode",
+        "title"
+      ],
+      "type": "object"
+    },
+    {
       "properties": {
         "_meta": true,
         "message": {
@@ -566,6 +594,27 @@
         "mode": {
           "enum": [
             "openai/form"
+          ],
+          "type": "string"
+        },
+        "requestedSchema": true
+      },
+      "required": [
+        "message",
+        "mode",
+        "requestedSchema"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "_meta": true,
+        "message": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "openaiForm"
           ],
           "type": "string"
         },

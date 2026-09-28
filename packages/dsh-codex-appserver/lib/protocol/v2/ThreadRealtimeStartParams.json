@@ -111,12 +111,37 @@
           ],
           "title": "WebrtcThreadRealtimeStartTransport",
           "type": "object"
+        },
+        {
+          "properties": {
+            "callId": {
+              "description": "Identifier of a realtime call already created and negotiated by the client.",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "existingCall"
+              ],
+              "title": "ExistingCallThreadRealtimeStartTransportType",
+              "type": "string"
+            }
+          },
+          "required": [
+            "callId",
+            "type"
+          ],
+          "title": "ExistingCallThreadRealtimeStartTransport",
+          "type": "object"
         }
       ]
     }
   },
   "description": "EXPERIMENTAL - start a thread-scoped realtime session.",
   "properties": {
+    "backendReasoningStatus": {
+      "description": "Relays public reasoning summaries as quiet context for realtime V3 delegations. Defaults to false.",
+      "type": "boolean"
+    },
     "clientManagedHandoffs": {
       "description": "Leaves Codex response handoffs to the client's explicit append calls instead of forwarding them automatically. Defaults to false.",
       "type": [

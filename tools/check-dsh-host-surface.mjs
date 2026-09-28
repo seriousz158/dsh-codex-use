@@ -59,16 +59,20 @@ export function inspectHostSurface({ dshBin = locateDshBinary(), runtimeNodeModu
   const checks = {
     dshRuntime: Boolean(dshBin && existsSync(dshBin)),
     settingsScope: false,
+    configForms: false,
     pluginSlot: false,
+    pluginTab: false,
   };
   const files = {};
   if (runtimeNodeModules) {
     files.settings = packageFile(runtimeNodeModules, "@deepseek-ai/dsh-client-ui-settings", "lib/client.js");
     files.pluginSettings = packageFile(runtimeNodeModules, "@deepseek-ai/dsh-client-ui-settings-plugins", "lib/client.js");
-    checks.settingsScope = Boolean(files.settings && existsSync(files.settings)
-      && /settingsScope/.test(readFileSync(files.settings, "utf8")));
-    checks.pluginSlot = Boolean(files.pluginSettings && existsSync(files.pluginSettings)
-      && /settings\.plugin\.item/.test(readFileSync(files.pluginSettings, "utf8")));
+    const settingsSource = files.settings && existsSync(files.settings) ? readFileSync(files.settings, "utf8") : "";
+    const pluginSource = files.pluginSettings && existsSync(files.pluginSettings) ? readFileSync(files.pluginSettings, "utf8") : "";
+    checks.settingsScope = /settingsScope/.test(settingsSource);
+    checks.configForms = /configForms/.test(settingsSource);
+    checks.pluginSlot = /settings\.plugin\.item/.test(pluginSource);
+    checks.pluginTab = /settings\.plugins\.tab/.test(pluginSource);
   }
 
   const browserCandidate = process.env.PLAYWRIGHT_CLI || commandOnPath("playwright-cli") || join(homedir(), ".codex", "skills", "playwright", "scripts", "playwright_cli.sh");
@@ -79,7 +83,7 @@ export function inspectHostSurface({ dshBin = locateDshBinary(), runtimeNodeModu
     .map(([key]) => key);
   const runtimeMissing = !checks.dshRuntime;
   const browserMissing = !checks.browser;
-  const surfaceMissing = checks.dshRuntime && (!checks.settingsScope || !checks.pluginSlot);
+  const surfaceMissing = checks.dshRuntime && !((checks.settingsScope && checks.pluginSlot) || (checks.configForms && checks.pluginTab));
 
   return {
     dshBin,
@@ -91,8 +95,8 @@ export function inspectHostSurface({ dshBin = locateDshBinary(), runtimeNodeModu
     browserMissing,
     surfaceMissing,
     fallback: {
-      slot: checks.pluginSlot ? "settings.plugin.item" : "settings.general.item",
-      settingsTransport: checks.settingsScope ? "settingsScope.bind" : "unavailable",
+      slot: checks.pluginTab ? "settings.plugins.tab" : checks.pluginSlot ? "settings.plugin.item" : "settings.general.item",
+      settingsTransport: checks.configForms ? "configForms.get" : checks.settingsScope ? "settingsScope.bind" : "unavailable",
     },
   };
 }
@@ -183,6 +187,13 @@ export async function runBrowserSurfaceCheck({ browser, url, dshHome }) {
   if (!pluginRef) throw new Error("plugin settings tab is not visible in the Web surface");
   await browserCommand(browser, ["click", pluginRef]);
   snapshot = await browserCommand(browser, ["snapshot"]);
+  if (!/Codex CLI 路径/.test(snapshot)) {
+    const codexTab = snapshotRef(snapshot, /(?:tab|button) "Codex App Server"/);
+    if (codexTab) {
+      await browserCommand(browser, ["click", codexTab]);
+      snapshot = await browserCommand(browser, ["snapshot"]);
+    }
+  }
   if (!/Codex App Server/.test(snapshot) || !/settings\.plugin\.item|Codex CLI/.test(snapshot)) throw new Error("Codex plugin settings card is not visible in the Web settings surface");
 
   const codexInput = snapshotInputRef(snapshot, /Codex CLI 路径/);
@@ -243,7 +254,7 @@ export function hostSurfaceResult(options = {}) {
   return {
     ...result,
     state: "ready",
-    reason: "Host settings slot and settingsScope transport are available",
+    reason: `Host settings slot and ${result.fallback.settingsTransport} transport are available`,
   };
 }
 

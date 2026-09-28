@@ -18,10 +18,10 @@ bundle patch mounts the host provider; the client manifest injects the UI.
 - Node.js `>=22`
 - DSH `>=0.1.0-rc.7 <0.1.1-0 || >=0.1.1-rc.0 <0.2.0-0` (verified on
   `0.1.0-rc.7` and `0.1.1-rc.2`)
-- Codex CLI `0.149.0` App Server protocol generated with `--experimental`
-- Codex CLI `0.144.1` is retained only as a historical replay fixture
+- Codex CLI `0.158.0` App Server protocol generated with `--experimental`
+- Codex CLI `0.149.0` and `0.144.1` are retained only as historical replay fixtures
 
-Release `0.2.5` supports Codex CLI `0.149.0` only. Other versions fail closed
+Release `0.2.6` supports Codex CLI `0.158.0` only. Other versions fail closed
 with `protocol-mismatch`. This project is distributed through GitHub source
 installs and GitHub Releases; it is not published to npm.
 

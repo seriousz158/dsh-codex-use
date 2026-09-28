@@ -49,7 +49,7 @@ test("static profile scan never reads credentials", async () => {
 });
 
 test("live fixture summarizer keeps account, quota, and model metadata bounded", async () => {
-  const fixture = JSON.parse(await readFile(new URL("../tools/fixtures/codex-appserver-0.149.0.json", import.meta.url), "utf8"));
+  const fixture = JSON.parse(await readFile(new URL("../tools/fixtures/codex-appserver-0.158.0.json", import.meta.url), "utf8"));
   const report = summarizeLiveFixture(fixture);
   assert.equal(report.account.state, "account-readable");
   assert.equal(report.quota.state, "available");
