@@ -176,7 +176,7 @@ function failure(message, code) { return { message, code }; }
 
 function normalizeConfig(config = {}) {
   const next = { ...DEFAULT_CONFIG, ...config };
-  if (!["read-only", "workspace-write"].includes(next.sandbox)) throw new Error("llm-codex-appserver: invalid sandbox");
+  if (!["read-only", "workspace-write", "danger-full-access"].includes(next.sandbox)) throw new Error("llm-codex-appserver: invalid sandbox");
   if (next.approvalPolicy !== "never") throw new Error("llm-codex-appserver: approvalPolicy must be never in v1");
   if (typeof next.ephemeralThreads !== "boolean") throw new Error("llm-codex-appserver: ephemeralThreads must be boolean");
   if (!Number.isInteger(next.historyBootstrap) || next.historyBootstrap < 0 || next.historyBootstrap > 100) throw new Error("llm-codex-appserver: historyBootstrap must be 0..100");
@@ -536,6 +536,29 @@ export class CodexAppServerAdapter extends LlmAdapter {
     const inFlight = entry.inFlight;
     if (!inFlight) return { kind: "none", entry };
     if (!inFlight.turnId || inFlight.state === "starting") throw new LlmError("Codex turn state unknown; refusing to resubmit", "turn-state-unknown");
+    // Ephemeral threads cannot be read with includeTurns=true. A completion
+    // notification may still be queued after the caller stopped consuming.
+    if (entry.ephemeral === true) {
+      if (inFlight.state === "completed") return { kind: "completed", entry, text: inFlight.completionText ?? "" };
+      let frame;
+      try {
+        frame = await this.hub.next((candidate) => candidate.method === "turn/completed"
+          && candidate.params?.threadId === entry.threadId
+          && candidate.params?.turn?.id === inFlight.turnId, { timeoutMs: 15_000 });
+      } catch (error) {
+        throw new LlmError("Codex turn state unknown; refusing to resubmit", "turn-state-unknown", { cause: error });
+      }
+      const turn = frame.params.turn;
+      if (turn.status === "completed") {
+        const text = completionText(turn);
+        const updated = await this.#saveThreadEntry(sessionId, { ...entry, inFlight: { ...inFlight, state: "completed", completionText: text }, usageState: "missing" }, config);
+        return { kind: "completed", entry: updated, text };
+      }
+      if (turn.status !== "interrupted" && turn.status !== "failed") throw new LlmError("Codex turn state unknown; refusing to resubmit", "turn-state-unknown");
+      const updated = await this.#saveThreadEntry(sessionId, { ...entry, inFlight: null, lastTurnStatus: turn.status }, config);
+      if (turn.status === "interrupted") return { kind: "interrupted", entry: updated };
+      return { kind: "failed", entry: updated, message: turn.error?.message ?? "Codex turn failed" };
+    }
     let response;
     try { response = await this.rpc.request("thread/read", { threadId: entry.threadId, includeTurns: true }, { timeoutMs: 15_000 }); }
     catch (error) { throw new LlmError("Codex turn state unknown; refusing to resubmit", "turn-state-unknown", { cause: error }); }
@@ -624,7 +647,7 @@ export class CodexAppServerAdapter extends LlmAdapter {
   async *#streamLocked(options, sessionId, config) {
     if (config.injectMemory === true) {
       throw new LlmError(
-        "Codex memory injection is unsupported by protocol 0.149.0; disable Inject memory",
+        `Codex memory injection is unsupported by protocol ${EXPECTED_CODEX_VERSION}; disable Inject memory`,
         "protocol-error",
       );
     }
@@ -796,8 +819,19 @@ export class CodexAppServerAdapter extends LlmAdapter {
         } catch (error) {
           if (error?.code === "aborted" || options.signal?.aborted) {
             await interrupt();
-            yield { type: "finish", reason: { kind: "aborted", failure: failure("Codex turn aborted", "ABORTED") } };
-            return;
+            // An interrupt acknowledgement precedes the terminal notification.
+            // Drain it without the already-aborted caller signal. If it never
+            // arrives, leave the checkpoint inFlight rather than risk a resend.
+            try {
+              const interrupted = await this.hub.next((candidate) => candidate.method === "turn/completed"
+                && candidate.params?.threadId === threadId
+                && candidate.params?.turn?.id === turnId, { timeoutMs: 15_000 });
+              completion = interrupted.params.turn;
+            } catch {
+              yield { type: "finish", reason: { kind: "aborted", failure: failure("Codex turn state unknown after interruption", "ABORTED") } };
+              return;
+            }
+            break;
           }
           throw asLlmError(error);
         }

@@ -7,12 +7,12 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EXPECTED_CODEX_VERSION = "0.149.0";
+const EXPECTED_CODEX_VERSION = "0.158.0";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoDir = resolve(scriptDir, "..");
 const protocolDir = resolve(repoDir, "packages/dsh-codex-appserver/lib/protocol");
 const aggregateSchema = join(protocolDir, "codex_app_server_protocol.v2.schemas.json");
-const codexBin = process.env.CODEX_BIN || "/opt/homebrew/bin/codex";
+const codexBin = process.env.CODEX_BIN || "codex";
 
 function fail(message) {
   console.error(`refresh-codex-protocol: ${message}`);

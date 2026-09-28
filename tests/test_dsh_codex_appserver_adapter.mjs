@@ -74,6 +74,23 @@ assert.deepEqual(rpc.requests.find((request) => request.method === "turn/start")
 assert.equal(rpc.requests.filter((request) => request.method === "turn/start").length, 1);
 assert.equal(chunks.some((chunk) => chunk.type === "tool-call-delta"), false);
 
+// If the DSH stream drops after Codex accepts a turn, the queued terminal
+// notification must be returned on retry without interrupting or charging for
+// another turn. Ephemeral threads cannot be queried with thread/read.
+const droppedEntry = await store.get("session-1");
+await store.set("session-1", {
+  ...droppedEntry,
+  checkpointUserMsgId: null,
+  inFlight: { state: "running", turnId: "dropped-turn", clientUserMessageId: "u1", messageIds: ["u1"] },
+});
+rpc.emit("notification", { method: "turn/completed", params: { threadId: "thread-1", turn: { id: "dropped-turn", status: "completed", items: [{ type: "agentMessage", id: "dropped-message", text: "recovered answer" }] } } });
+const recoveredEphemeral = await collect(adapter.stream({ sessionId: "session-1", model: "model-1", workspace, messages: [user("u1", "new request")] }));
+assert.deepEqual(recoveredEphemeral.map((chunk) => chunk.type), ["text-delta", "finish"]);
+assert.equal(recoveredEphemeral[0].text, "recovered answer");
+assert.equal(rpc.requests.filter((request) => request.method === "turn/start").length, 1, "stream recovery must not submit a duplicate turn");
+assert.equal(rpc.requests.filter((request) => request.method === "turn/interrupt").length, 0, "stream recovery must not interrupt an already-completed turn");
+assert.equal(rpc.requests.filter((request) => request.method === "thread/read").length, 0, "ephemeral recovery must not read persisted turns");
+
 const testSubagentChunks = await collect(adapter.stream({
   sessionId: "test-subagent-session",
   model: "model-1",

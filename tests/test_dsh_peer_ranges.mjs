@@ -15,11 +15,11 @@ const compatibility = await readJson("packages/dsh-codex-appserver/compatibility
 const appserverRange = appserver.peerDependencies["@deepseek-ai/dsh-llm"];
 const searchRange = search.peerDependencies["@deepseek-ai/dsh-llm"];
 
-assert.equal(rootManifest.version, "0.2.5");
-assert.equal(appserver.version, "0.2.5");
+assert.equal(rootManifest.version, "0.2.7");
+assert.equal(appserver.version, "0.2.7");
 assert.equal(search.version, "0.1.0");
 assert.equal(appserver.version, compatibility.pluginVersion);
-assert.equal(compatibility.codex.cliVersion, "0.149.0");
+assert.equal(compatibility.codex.cliVersion, "0.158.0");
 assert.equal(compatibility.codex.protocol, "v2");
 assert.equal(compatibility.dsh.supported, appserverRange);
 assert.equal(searchRange, appserverRange);
@@ -42,6 +42,6 @@ for (const version of ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.1"]) {
   assert.equal(semver.satisfies(version, appserverRange), true, `${version} must satisfy ${appserverRange}`);
 }
 assert.equal(semver.satisfies("0.2.0-rc.1", appserverRange), false);
-assert.deepEqual(compatibility.dsh.verified, ["0.1.0-rc.7", "0.1.1-rc.2"]);
+assert.deepEqual(compatibility.dsh.verified, ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.5-rc.2", "0.1.7-rc.2"]);
 
 console.log(`DSH peer range contract passed (${appserverRange})`);

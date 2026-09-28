@@ -1,0 +1,56 @@
+{
+  "fixtureVersion": 1,
+  "codexCliVersion": "0.158.0",
+  "protocolVersion": "codex-app-server/0.158.0",
+  "generatedAt": "2026-09-28T00:00:00.000Z",
+  "source": "schema-derived deterministic contract samples; no model request was sent",
+  "turnCompleted": {
+    "method": "turn/completed",
+    "params": {
+      "threadId": "thread-sample",
+      "turn": {
+        "id": "turn-sample",
+        "status": "completed",
+        "items": []
+      }
+    }
+  },
+  "tokenUsageUpdated": {
+    "method": "thread/tokenUsage/updated",
+    "params": {
+      "threadId": "thread-sample",
+      "turnId": "turn-sample",
+      "tokenUsage": {
+        "last": {
+          "cachedInputTokens": 3,
+          "inputTokens": 5,
+          "outputTokens": 7,
+          "reasoningOutputTokens": 11,
+          "totalTokens": 26
+        },
+        "total": {
+          "cachedInputTokens": 3,
+          "inputTokens": 5,
+          "outputTokens": 7,
+          "reasoningOutputTokens": 11,
+          "totalTokens": 26
+        }
+      }
+    }
+  },
+  "rateLimitSparseUpdate": {
+    "method": "account/rateLimits/updated",
+    "params": {
+      "rateLimits": {
+        "limitId": "codex",
+        "primary": {
+          "usedPercent": 50
+        },
+        "secondary": null,
+        "spendControlReached": false,
+        "planType": "pro",
+        "rateLimitReachedType": null
+      }
+    }
+  }
+}

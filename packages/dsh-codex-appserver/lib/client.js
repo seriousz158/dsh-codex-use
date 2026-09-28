@@ -4,7 +4,7 @@ window.__ModuleLoader__.load({
     var module = { exports: {} };
     const jsx = require("react/jsx-runtime");
     const react = require("react");
-    const strict = (parse) => ({ mode: "strict", typeSymbol: "dsh-codex-appserver/types#Result", schema: { parse } });
+    const strict = (parse) => ({ mode: "strict", typeSymbol: "dsh-codex-appserver/types#Result", schema: { parse }, create: () => ({ parse }) });
     const result = (value) => {
       if (!value || typeof value !== "object" || typeof value.ok !== "boolean") throw new Error("invalid Codex provider result");
       if (!value.ok && typeof value.error?.code !== "string") throw new Error("invalid Codex provider error");
@@ -19,12 +19,11 @@ window.__ModuleLoader__.load({
     const css = `.dshca_row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--dsw-alias-border-l2,#eee)}.dshca_panel{min-width:0;flex:1}.dshca_disclosure{min-width:0}.dshca_toggle{display:flex;align-items:flex-start;width:100%;gap:12px;border:0;background:transparent;color:inherit;cursor:pointer;padding:0 0 4px;text-align:left}.dshca_toggle:focus-visible{outline:2px solid var(--dsw-alias-state-focus,#2563eb);outline-offset:3px;border-radius:4px}.dshca_summary_main{min-width:0;display:flex;flex-direction:column;gap:4px;flex:1}.dshca_summary_hint{flex:none;font:var(--dsw-font-xs-13,12px sans-serif);color:var(--dsw-alias-label-caption,#888);white-space:nowrap;padding-top:2px}.dshca_summary_meters{display:flex;flex-direction:column;gap:6px;padding:2px 0 4px}.dshca_title{font:var(--dsw-font-s-strong-14,14px sans-serif);font-weight:600}.dshca_desc,.dshca_status,.dshca_window_meta{font:var(--dsw-font-xs-13,12px sans-serif);color:var(--dsw-alias-label-caption,#888)}.dshca_error{color:var(--dsw-alias-state-danger,#c53b37)}.dshca_meter{min-width:0}.dshca_meter_header{display:flex;justify-content:space-between;gap:8px;font:var(--dsw-font-xs-13,12px sans-serif);color:var(--dsw-alias-label-caption,#888)}.dshca_meter_value{font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary,#222);white-space:nowrap}.dshca_meter_track{box-sizing:border-box;height:6px;margin-top:4px;overflow:hidden;background:rgba(148,163,184,.28);border:1px solid rgba(148,163,184,.35);border-radius:999px}.dshca_meter_fill{display:block;width:var(--dshca-progress,0%);height:100%;background:#38bdf8;border-radius:inherit}.dshca_meter[data-severity=warning] .dshca_meter_fill{background:#fbbf24}.dshca_meter[data-severity=critical] .dshca_meter_fill{background:#fb923c}.dshca_details_body{display:flex;flex-direction:column;gap:10px;padding:8px 0 2px}.dshca_bucket{padding:8px 0;border-top:1px solid var(--dsw-alias-border-l3,#f0f0f0)}.dshca_bucket_title{display:block;font:var(--dsw-font-s-strong-14,14px sans-serif);font-weight:600;margin-bottom:8px}.dshca_bucket_grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.dshca_window{min-width:0}.dshca_window_meta{display:block;margin-top:4px;line-height:1.4}.dshca_empty{font:var(--dsw-font-xs-13,12px sans-serif);color:var(--dsw-alias-label-caption,#888)}.dshca_button{align-self:flex-start;border:1px solid var(--dsw-alias-border-l2,#ddd);border-radius:6px;padding:6px 10px;background:transparent;cursor:pointer}.dshca_button:disabled{opacity:.5;cursor:default}.dshca_settings{display:flex;flex-direction:column;gap:12px;padding:10px 0}.dshca_settings_title{font:var(--dsw-font-s-strong-14,14px sans-serif);font-weight:600}.dshca_settings_hint,.dshca_settings_error{font:var(--dsw-font-xs-13,12px sans-serif);color:var(--dsw-alias-label-caption,#888)}.dshca_settings_error{color:var(--dsw-alias-state-danger,#c53b37)}.dshca_settings_field{display:flex;align-items:center;justify-content:space-between;gap:12px}.dshca_settings_field label{font:var(--dsw-font-xs-13,12px sans-serif)}.dshca_settings_field input,.dshca_settings_field select{max-width:240px;min-width:0}.dshca_settings_actions{display:flex;gap:8px}.dshca_settings_actions button{border:1px solid var(--dsw-alias-border-l2,#ddd);border-radius:6px;padding:6px 10px;background:transparent;cursor:pointer}.dshca_settings_actions button:disabled{opacity:.5;cursor:default}@media (max-width:560px){.dshca_summary_main{margin-bottom:8px}.dshca_summary_hint{display:block;margin-bottom:6px}.dshca_bucket_grid{grid-template-columns:1fr}.dshca_settings_field{align-items:flex-start;flex-direction:column}.dshca_settings_field input,.dshca_settings_field select{max-width:none;width:100%}}`;
     const tagId = "dsh-codex-appserver/style.css";
     if (typeof document !== "undefined") { let tag = document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]"); if (tag === null) { tag = document.createElement("style"); tag.dataset.plugin = "dsh-codex-appserver"; tag.dataset.pluginCss = tagId; document.head.appendChild(tag); } if (tag.textContent !== css) tag.textContent = css; }
-    const entry = { name: "dsh-codex-appserver", inject: ["slots", "remote", "settingsScope"], async apply(ctx) {
+    const entry = { name: "dsh-codex-appserver", inject: ["slots", "remote"], async apply(ctx) {
       const disposeRemote = await ctx.remote.$mount(remote);
       ctx.effect(() => disposeRemote, "dsh-codex-appserver: remote cleanup");
-      ctx.inject(["remote.codexAppserver", "settingsScope"], (providerCtx) => {
+      ctx.inject(["remote.codexAppserver"], (providerCtx) => {
         const service = providerCtx.remote.codexAppserver;
-        const settingsScope = typeof providerCtx.settingsScope?.bind === "function" ? providerCtx.settingsScope.bind({ namespace: "llm-codex-appserver" }) : null;
         const clampPercent = (value) => Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : null;
         const remainingPercent = (window) => { const used = clampPercent(window?.usedPercent); return used === null ? null : 100 - used; };
         const severityFor = (value) => value === null ? "unknown" : value <= 10 ? "critical" : value <= 25 ? "warning" : "normal";
@@ -91,7 +90,7 @@ window.__ModuleLoader__.load({
           ] });
         }
         providerCtx.slots.inject("settings.general.item", () => providerCtx.slots.register({ name: "settings.general.item", id: "codex-appserver", order: 31 }, CodexRateLimitRow));
-        if (settingsScope) {
+        const registerSettings = (settingsScope, modern = false) => {
           const defaults = { codexBin: "", sandbox: "workspace-write", approvalPolicy: "never", ephemeralThreads: true, injectMemory: false, historyBootstrap: 20, requestTimeoutMs: 600000, rateLimitRefreshSec: 30, fastMode: false };
           const clone = (value) => ({ ...defaults, ...(value && typeof value === "object" ? value : {}) });
           const SettingsField = ({ label, children }) => jsx.jsxs("div", { className: "dshca_settings_field", children: [jsx.jsx("label", { children: label }), children] });
@@ -134,7 +133,7 @@ window.__ModuleLoader__.load({
               jsx.jsx("div", { className: "dshca_settings_title", children: "Codex App Server" }),
               jsx.jsx("div", { className: "dshca_settings_hint", children: unavailable ? "设置传输暂不可用；额度监控仍在通用设置中。" : "修改仅在保存后生效，revision 冲突会自动重新读取。" }),
               jsx.jsx(SettingsField, { label: "Codex CLI 路径", children: jsx.jsx("input", { value: draft.codexBin, disabled: unavailable || saving, onChange: (event) => update("codexBin", event.target.value) }) }),
-              jsx.jsx(SettingsField, { label: "Sandbox", children: jsx.jsxs("select", { value: draft.sandbox, disabled: unavailable || saving, onChange: (event) => update("sandbox", event.target.value), children: [jsx.jsx("option", { value: "workspace-write", children: "workspace-write" }), jsx.jsx("option", { value: "read-only", children: "read-only" })] }) }),
+              jsx.jsx(SettingsField, { label: "Sandbox", children: jsx.jsxs("select", { value: draft.sandbox, disabled: unavailable || saving, onChange: (event) => update("sandbox", event.target.value), children: [jsx.jsx("option", { value: "danger-full-access", children: "danger-full-access" }), jsx.jsx("option", { value: "workspace-write", children: "workspace-write" }), jsx.jsx("option", { value: "read-only", children: "read-only" })] }) }),
               jsx.jsx(SettingsField, { label: "Approval policy（安全策略）", children: jsx.jsx("input", { value: "never", readOnly: true, disabled: true }) }),
               jsx.jsx(SettingsField, { label: "Ephemeral threads", children: jsx.jsx("input", { type: "checkbox", checked: draft.ephemeralThreads, disabled: unavailable || saving, onChange: (event) => update("ephemeralThreads", event.target.checked) }) }),
               jsx.jsx(SettingsField, { label: "Inject memory", children: jsx.jsx("input", { type: "checkbox", checked: draft.injectMemory, disabled: unavailable || saving, onChange: (event) => update("injectMemory", event.target.checked) }) }),
@@ -149,6 +148,10 @@ window.__ModuleLoader__.load({
               ] }),
             ] });
           };
+          if (modern) {
+            providerCtx.slots.inject("settings.plugins.tab", () => providerCtx.slots.register({ name: "settings.plugins.tab", id: "codex-appserver", order: 31, label: "Codex App Server" }, CodexSettingsCard));
+            return;
+          }
           let fallbackSettingsCardDispose = null;
           const pluginSlotDeclared = () => {
             try { return typeof providerCtx.slots.entries === "function" && providerCtx.slots.entries("settings.plugin.item").length > 0; }
@@ -165,7 +168,13 @@ window.__ModuleLoader__.load({
             return providerCtx.slots.register({ name: "settings.plugin.item", key: "llm-codex-appserver", order: 31 }, CodexSettingsCard);
           });
           providerCtx.slots.inject("settings.general.item", registerFallbackSettingsCard);
-        }
+        };
+        providerCtx.inject(["settingsScope"], (settingsCtx) => {
+          if (typeof settingsCtx.settingsScope?.bind === "function") registerSettings(settingsCtx.settingsScope.bind({ namespace: "llm-codex-appserver" }));
+        });
+        providerCtx.inject(["configForms"], (settingsCtx) => {
+          if (typeof settingsCtx.configForms?.get === "function") registerSettings(settingsCtx.configForms.get("codex-appserver"), true);
+        });
       });
     } };
     module.exports = entry;

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.7 — 2026-09-28
+
+- Support DSH `0.1.7-rc.2`'s live Config forms, Plugins tab, and Typert strict-codec factory while retaining the `0.1.5-rc.2` settings path.
+- Verify a temporary Web profile can save plugin settings and display Codex quota; retain the stream-recovery and quota regression suite.
+
+## 0.2.6 — 2026-09-28
+
+- Refresh the App Server JSON Schema and TypeScript protocol artifacts from Codex CLI `0.158.0` with `--experimental`.
+- Verify read-only account, quota, and model discovery against CLI `0.158.0` and retain strict version matching.
+- Accept DSH's current string settings namespace and preserve the existing `danger-full-access` configuration option.
+- Keep Codex CLI `0.149.0` as a historical fixture only.
+
 ## 0.2.5 — 2026-08-26
 
 - Treat a successful ChatGPT `account/read` response with
