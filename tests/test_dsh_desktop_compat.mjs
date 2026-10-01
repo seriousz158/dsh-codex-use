@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
-const expected = process.env.DSH_DESKTOP_VERSION || "0.1.7-rc.1";
+const expected = process.env.DSH_DESKTOP_VERSION || "0.2.0-rc.2";
 const escape = expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 for (const name of ["dsh-codex-appserver", "dsh-codex-search"]) {
   const path = join(root, "packages", name, "package.json");
