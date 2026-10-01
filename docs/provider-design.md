@@ -351,7 +351,7 @@ DSH 的 system prompt 含 DSH 工具说明，不转发给 Codex。`injectMemory`
 
 （`thread/resume` 仅属于显式持久化模式，不是默认行为。）
 
-## DSH 0.1.5-rc.1 compatibility
+## DSH 0.1.5-rc.1 and 0.1.7-rc.1 compatibility
 
 Use the namespace string directly; current Host settings registration validates
 it. The exact tested RC is explicitly included in peer ranges and the compatibility

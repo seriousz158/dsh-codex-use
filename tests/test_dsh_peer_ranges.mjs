@@ -38,10 +38,10 @@ for (const name of [
   assert.equal(appserver.peerDependencies[name], appserverRange);
 }
 
-for (const version of ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.1", "0.1.5-rc.1"]) {
+for (const version of ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.1", "0.1.5-rc.1", "0.1.7-rc.1"]) {
   assert.equal(semver.satisfies(version, appserverRange), true, `${version} must satisfy ${appserverRange}`);
 }
 assert.equal(semver.satisfies("0.2.0-rc.1", appserverRange), false);
-assert.deepEqual(compatibility.dsh.verified, ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.5-rc.1"]);
+assert.deepEqual(compatibility.dsh.verified, ["0.1.0-rc.7", "0.1.1-rc.2", "0.1.5-rc.1", "0.1.7-rc.1"]);
 
 console.log(`DSH peer range contract passed (${appserverRange})`);

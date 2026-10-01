@@ -35,8 +35,9 @@
     "test:ui": "node tests/test_dsh_codex_appserver_ui.mjs",
     "test:install": "zsh tests/test_dsh_codex_appserver_install.sh",
     "test:syntax": "node --check packages/dsh-codex-appserver/lib/index.js && node --check packages/dsh-codex-appserver/lib/adapter.js && node --check packages/dsh-codex-appserver/lib/rpc.js && node --check packages/dsh-codex-appserver/lib/diagnostics.js && node --check tools/codex-appserver-doctor.mjs && node --check tools/refresh-codex-protocol.mjs && node --check packages/dsh-codex-search/lib/index.js && node --check packages/dsh-codex-search/lib/remote-search.js",
-    "test": "npm run scan:secrets && npm run validate:bundle && npm run test:manifest && npm run test:peer-ranges && npm run test:release && npm run test:errors && npm run test:doctor && npm run test:conflicts && npm run test:quota && npm run test:settings && npm run test:fast-mode && npm run test:images && npm run test:search && npm run test:adapter && npm run test:contracts && npm run test:probe && npm run test:rpc && npm run test:threadmap && npm run test:ui && npm run test:install && npm run test:syntax && npm run test:runtime-imports && npm run test:host-auth",
+    "test": "npm run scan:secrets && npm run validate:bundle && npm run test:manifest && npm run test:peer-ranges && npm run test:release && npm run test:errors && npm run test:doctor && npm run test:conflicts && npm run test:quota && npm run test:settings && npm run test:fast-mode && npm run test:images && npm run test:search && npm run test:adapter && npm run test:contracts && npm run test:probe && npm run test:rpc && npm run test:threadmap && npm run test:ui && npm run test:install && npm run test:syntax && npm run test:runtime-imports && npm run test:desktop-compat && npm run test:host-auth",
     "test:runtime-imports": "node tests/test_dsh_runtime_imports.mjs",
+    "test:desktop-compat": "node tests/test_dsh_desktop_compat.mjs",
     "test:host-auth": "node tests/test_dsh_host_auth.mjs"
   },
   "devDependencies": {

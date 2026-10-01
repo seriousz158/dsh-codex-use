@@ -1,3 +1,7 @@
+## Unreleased
+
+- Verify appserver and search entry points against DSH desktop 0.1.7-rc.1.
+
 # Changelog
 
 ## Unreleased
