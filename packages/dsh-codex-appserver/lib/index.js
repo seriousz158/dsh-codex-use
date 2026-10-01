@@ -6,7 +6,7 @@ import { findProviderConflicts, providerConflictError } from "./diagnostics.js";
 import { toLlmError } from "./errors.js";
 
 export const name = "dsh-codex-appserver";
-export const inject = ["llm", "settings", "sessions", "attachments"];
+export const inject = ["llm", "sessions", "attachments"];
 export const NS = "llm-codex-appserver";
 export const Config = z.object({
   codexBin: z.string().default(""),
@@ -33,9 +33,43 @@ export function preflightProviderConflicts(ctx) {
   return conflicts;
 }
 
+function registerSettingsCompat(ctx, entry) {
+  const settingsApi = typeof ctx.get === "function" ? ctx.get("settings") : undefined;
+  if (typeof settingsApi?.register === "function") {
+    return settingsApi.register(NS, Config, { base: entry });
+  }
+  if (settingsApi === void 0) {
+    const base = entry?.config && typeof entry.config === "object" ? { ...entry.config } : {};
+    return { get: () => base, update: async () => {}, watch: () => () => {}, dispose: () => {} };
+  }
+  const entryId = entry?.options?.id ?? entry?.id ?? NS;
+  const listeners = new Set();
+  const read = () => {
+    try {
+      const descriptor = settingsApi.describe().find((row) => row.ns === entryId || row.ns === NS);
+      return descriptor?.value ?? {};
+    } catch {
+      return {};
+    }
+  };
+  const onUpdated = (ns) => {
+    if (ns !== entryId && ns !== NS) return;
+    for (const listener of [...listeners]) {
+      try { listener(read()); } catch {}
+    }
+  };
+  const stop = ctx.on?.("settings/document-updated", onUpdated);
+  return {
+    get: read,
+    async update(patch) { await settingsApi.update(entryId, patch); },
+    watch(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    dispose() { listeners.clear(); stop?.(); },
+  };
+}
+
 export function apply(ctx, entry = {}) {
   preflightProviderConflicts(ctx);
-  const scope = ctx.settings.register(NS, Config, { base: entry });
+  const scope = registerSettingsCompat(ctx, entry);
   const adapter = new CodexAppServerAdapter({
     config: () => scope.get(),
     logger: ctx.logger,
