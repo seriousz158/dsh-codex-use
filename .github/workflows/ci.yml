@@ -24,3 +24,18 @@ jobs:
           npm pack --dry-run --workspace packages/dsh-codex-appserver 2>&1 | tee /tmp/dsh-codex-pack.txt
           grep -Fq 'cordis.patch.yml' /tmp/dsh-codex-pack.txt
           grep -Fq 'lib/index.js' /tmp/dsh-codex-pack.txt
+
+  dsh-current-imports:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - name: Install current DSH contract dependencies
+        run: node tools/install-dsh-contract-deps.mjs 0.1.5-rc.1
+      - name: Verify real current-runtime imports
+        run: npm run test:runtime-imports
+        env:
+          DSH_EXPECTED_VERSION: 0.1.5-rc.1

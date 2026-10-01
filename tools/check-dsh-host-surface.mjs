@@ -114,8 +114,25 @@ async function createTemporaryProfile(dshBin) {
   return { root, dshHome, packagePath };
 }
 
+export function launchUrlFromOutput(output) {
+  // Only accept the official loopback launch line, preserving its auth query.
+  const match = String(output).match(/^dsh web: (http:\/\/127\.0\.0\.1:\d+(?:\/\?token=[A-Za-z0-9_-]+)?)(?=\r?\n)/m);
+  return match?.[1] ?? null;
+}
+
+export function redactLaunchTokens(value) {
+  return String(value).replace(/([?&]token=)[^\s&#"']+/g, "$1[REDACTED]");
+}
+
+export function cleanLaunchUrl(value) {
+  const url = new URL(value);
+  url.search = "";
+  url.hash = "";
+  return url.href;
+}
+
 async function launchWeb(dshBin, dshHome) {
-  const child = spawn(dshBin, ["web", "--host", "127.0.0.1", "--port", "0"], {
+  const child = spawn(dshBin, ["web", "--host", "127.0.0.1", "--port", "0", "--no-open"], {
     env: { ...process.env, DSH_HOME: dshHome },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -126,11 +143,11 @@ async function launchWeb(dshBin, dshHome) {
   child.stdout.on("data", (chunk) => { output += chunk; });
   child.stderr.on("data", (chunk) => { errorOutput += chunk; });
   const url = await new Promise((resolveUrl, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timed out waiting for DSH Web (${errorOutput.trim() || "no stderr"})`)), 30_000);
+    const timer = setTimeout(() => { child.kill("SIGTERM"); reject(new Error(`timed out waiting for DSH Web (${redactLaunchTokens(errorOutput.trim()) || "no stderr"})`)); }, 30_000);
     const poll = () => {
-      const match = output.match(/https?:\/\/127\.0\.0\.1:\d+/);
-      if (match) { clearTimeout(timer); resolveUrl(match[0]); return; }
-      if (child.exitCode !== null) { clearTimeout(timer); reject(new Error(`DSH Web exited (${child.exitCode}): ${errorOutput.trim()}`)); return; }
+      const launchUrl = launchUrlFromOutput(output);
+      if (launchUrl) { clearTimeout(timer); resolveUrl(launchUrl); return; }
+      if (child.exitCode !== null) { clearTimeout(timer); reject(new Error(`DSH Web exited (${child.exitCode}): ${redactLaunchTokens(errorOutput.trim())}`)); return; }
       setTimeout(poll, 100);
     };
     poll();
@@ -163,7 +180,7 @@ async function browserCommand(browser, args, { allowFailure = false } = {}) {
     return `${stdout}\n${stderr}`;
   } catch (error) {
     if (allowFailure) return `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
-    throw new Error(`Playwright ${args.join(" ")} failed: ${error.stderr || error.message}`);
+    throw new Error(redactLaunchTokens(`Playwright ${args.join(" ")} failed: ${error.stderr || error.message}`));
   }
 }
 
@@ -219,8 +236,12 @@ export async function runLiveHostSurfaceCheck({ dshBin = locateDshBinary(), brow
   const profile = await createTemporaryProfile(dshBin);
   const web = await launchWeb(dshBin, profile.dshHome);
   try {
+    if (new URL(web.url).searchParams.has("token")) {
+      const unauthenticated = await fetch(cleanLaunchUrl(web.url), { signal: AbortSignal.timeout(5000) });
+      if (unauthenticated.status !== 401) throw new Error("New DSH host must reject unauthenticated root requests");
+    }
     const browserResult = await runBrowserSurfaceCheck({ browser, url: web.url, dshHome: profile.dshHome });
-    return { ...profile, url: web.url, browser: browserResult };
+    return { ...profile, url: cleanLaunchUrl(web.url), browser: browserResult };
   } finally {
     web.child.kill("SIGTERM");
   }

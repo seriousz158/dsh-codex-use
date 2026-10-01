@@ -1,4 +1,14 @@
+## Unreleased
+
+- Verify appserver and search entry points against DSH desktop 0.1.7-rc.1.
+
 # Changelog
+
+## Unreleased
+
+- Adapt Host entry points and peer ranges to DSH 0.1.5-rc.1.
+- Add real-runtime import coverage while retaining legacy tests.
+- Preserve and redact authenticated Host launch URLs in UI acceptance checks.
 
 ## 0.2.5 — 2026-08-26
 
