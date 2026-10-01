@@ -3,7 +3,7 @@ import z from "@deepseek-ai/schemastery";
 import { safeSearchFetch } from "./remote-search.js";
 
 export const name = "dsh-codex-search";
-export const inject = ["llm", "settings"];
+export const inject = ["llm"];
 export const PROVIDER = "codex-search";
 export const NS = "llm-codex-search";
 export const Config = z.object({
@@ -33,7 +33,10 @@ class CodexSearchAdapter extends LlmAdapter {
 }
 
 export function apply(ctx, entry = {}) {
-  const scope = ctx.settings.register(NS, Config, { base: entry });
+  const settingsApi = typeof ctx.get === "function" ? ctx.get("settings") : undefined;
+  const scope = typeof settingsApi?.register === "function"
+    ? settingsApi.register(NS, Config, { base: entry })
+    : { get: () => (entry?.config && typeof entry.config === "object" ? { ...entry.config } : { enabled: false }), watch: () => () => {}, dispose: () => {} };
   const config = () => scope.get();
   if (!config().enabled) return;
   const existing = typeof ctx.llm.listProviders === "function" && ctx.llm.listProviders().some((item) => item.id === PROVIDER);

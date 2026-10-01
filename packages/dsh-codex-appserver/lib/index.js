@@ -6,7 +6,7 @@ import { findProviderConflicts, providerConflictError } from "./diagnostics.js";
 import { toLlmError } from "./errors.js";
 
 export const name = "dsh-codex-appserver";
-export const inject = ["llm", "settings", "sessions", "attachments"];
+export const inject = [];
 export const NS = "llm-codex-appserver";
 export const Config = z.object({
   codexBin: z.string().default(""),
@@ -21,9 +21,10 @@ export const Config = z.object({
 });
 
 export function preflightProviderConflicts(ctx) {
+  const llm = typeof ctx?.get === "function" ? ctx.get("llm") : ctx?.llm;
   const conflicts = findProviderConflicts({
-    providers: typeof ctx?.llm?.listProviders === "function" ? ctx.llm.listProviders() : [],
-    configurableProviders: typeof ctx?.llm?.listConfigurableProviders === "function" ? ctx.llm.listConfigurableProviders() : [],
+    providers: typeof llm?.listProviders === "function" ? llm.listProviders() : [],
+    configurableProviders: typeof llm?.listConfigurableProviders === "function" ? llm.listConfigurableProviders() : [],
   });
   if (conflicts.soft.length > 0) {
     const ids = conflicts.soft.map((entry) => entry.id).join(", ");
@@ -33,22 +34,59 @@ export function preflightProviderConflicts(ctx) {
   return conflicts;
 }
 
+function registerSettingsCompat(ctx, entry) {
+  const settingsApi = typeof ctx.get === "function" ? ctx.get("settings") : undefined;
+  if (typeof settingsApi?.register === "function") {
+    return settingsApi.register(NS, Config, { base: entry });
+  }
+  if (settingsApi === void 0) {
+    const base = entry?.config && typeof entry.config === "object" ? { ...entry.config } : {};
+    return { get: () => base, update: async () => {}, watch: () => () => {}, dispose: () => {} };
+  }
+  const entryId = entry?.options?.id ?? entry?.id ?? NS;
+  const listeners = new Set();
+  const read = () => {
+    try {
+      const descriptor = settingsApi.describe().find((row) => row.ns === entryId || row.ns === NS);
+      return descriptor?.value ?? {};
+    } catch {
+      return {};
+    }
+  };
+  const onUpdated = (ns) => {
+    if (ns !== entryId && ns !== NS) return;
+    for (const listener of [...listeners]) {
+      try { listener(read()); } catch {}
+    }
+  };
+  const stop = ctx.on?.("settings/document-updated", onUpdated);
+  return {
+    get: read,
+    async update(patch) { await settingsApi.update(entryId, patch); },
+    watch(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+    dispose() { listeners.clear(); stop?.(); },
+  };
+}
+
 export function apply(ctx, entry = {}) {
+  const llm = typeof ctx.get === "function" ? ctx.get("llm") : ctx.llm;
+  const sessions = typeof ctx.get === "function" ? ctx.get("sessions") : ctx.sessions;
+  const attachments = typeof ctx.get === "function" ? ctx.get("attachments") : ctx.attachments;
   preflightProviderConflicts(ctx);
-  const scope = ctx.settings.register(NS, Config, { base: entry });
+  const scope = registerSettingsCompat(ctx, entry);
   const adapter = new CodexAppServerAdapter({
     config: () => scope.get(),
     logger: ctx.logger,
-    attachments: ctx.attachments,
-    workspaceResolver: (sessionId) => ctx.sessions.get(sessionId)?.header?.cwd,
+    attachments,
+    workspaceResolver: (sessionId) => sessions?.get(sessionId)?.header?.cwd,
   });
-  const directory = ctx.llm.registerConfigurableProviders([{
+  const directory = llm.registerConfigurableProviders([{
     provider: PROVIDER,
     displayName: PROVIDER_NAME,
     settingsNs: NS,
     settingsPath: [],
   }]);
-  const registration = ctx.llm.registerAdapter([PROVIDER], adapter);
+  const registration = llm.registerAdapter([PROVIDER], adapter);
   const service = new CodexAppServerService(ctx, { adapter });
   const stopWatching = scope.watch((next, previous) => adapter.reconfigure(next, previous));
   ctx.effect(() => () => {
