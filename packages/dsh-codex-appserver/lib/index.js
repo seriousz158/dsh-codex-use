@@ -6,7 +6,7 @@ import { findProviderConflicts, providerConflictError } from "./diagnostics.js";
 import { toLlmError } from "./errors.js";
 
 export const name = "dsh-codex-appserver";
-export const inject = ["llm", "sessions", "attachments"];
+export const inject = [];
 export const NS = "llm-codex-appserver";
 export const Config = z.object({
   codexBin: z.string().default(""),
@@ -21,9 +21,10 @@ export const Config = z.object({
 });
 
 export function preflightProviderConflicts(ctx) {
+  const llm = typeof ctx?.get === "function" ? ctx.get("llm") : ctx?.llm;
   const conflicts = findProviderConflicts({
-    providers: typeof ctx?.llm?.listProviders === "function" ? ctx.llm.listProviders() : [],
-    configurableProviders: typeof ctx?.llm?.listConfigurableProviders === "function" ? ctx.llm.listConfigurableProviders() : [],
+    providers: typeof llm?.listProviders === "function" ? llm.listProviders() : [],
+    configurableProviders: typeof llm?.listConfigurableProviders === "function" ? llm.listConfigurableProviders() : [],
   });
   if (conflicts.soft.length > 0) {
     const ids = conflicts.soft.map((entry) => entry.id).join(", ");
@@ -68,21 +69,24 @@ function registerSettingsCompat(ctx, entry) {
 }
 
 export function apply(ctx, entry = {}) {
+  const llm = typeof ctx.get === "function" ? ctx.get("llm") : ctx.llm;
+  const sessions = typeof ctx.get === "function" ? ctx.get("sessions") : ctx.sessions;
+  const attachments = typeof ctx.get === "function" ? ctx.get("attachments") : ctx.attachments;
   preflightProviderConflicts(ctx);
   const scope = registerSettingsCompat(ctx, entry);
   const adapter = new CodexAppServerAdapter({
     config: () => scope.get(),
     logger: ctx.logger,
-    attachments: ctx.attachments,
-    workspaceResolver: (sessionId) => ctx.sessions.get(sessionId)?.header?.cwd,
+    attachments,
+    workspaceResolver: (sessionId) => sessions?.get(sessionId)?.header?.cwd,
   });
-  const directory = ctx.llm.registerConfigurableProviders([{
+  const directory = llm.registerConfigurableProviders([{
     provider: PROVIDER,
     displayName: PROVIDER_NAME,
     settingsNs: NS,
     settingsPath: [],
   }]);
-  const registration = ctx.llm.registerAdapter([PROVIDER], adapter);
+  const registration = llm.registerAdapter([PROVIDER], adapter);
   const service = new CodexAppServerService(ctx, { adapter });
   const stopWatching = scope.watch((next, previous) => adapter.reconfigure(next, previous));
   ctx.effect(() => () => {
