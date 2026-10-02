@@ -272,16 +272,25 @@ await Promise.all([
 ]);
 assert.equal(maxActiveTurns, 1, "different sessions that resolve to the same Codex thread must serialize turn/start");
 
-const cancelRpc = new FakeRpc(async (method) => {
+let cancelTurnStarts = 0;
+const cancelRpc = new FakeRpc(async (method, _params, _options, client) => {
   if (method === "initialize") return { result: {} };
   if (method === "thread/start") return { result: { thread: { id: "cancel-thread" } } };
-  if (method === "turn/start") return { result: { turn: { id: "cancel-turn" } } };
-  if (method === "turn/interrupt") return { result: {} };
+  if (method === "turn/start") {
+    cancelTurnStarts += 1;
+    if (cancelTurnStarts === 2) emitCompleted(client, { threadId: "cancel-thread", turnId: "next-turn" });
+    return { result: { turn: { id: cancelTurnStarts === 1 ? "cancel-turn" : "next-turn" } } };
+  }
+  if (method === "turn/interrupt") {
+    queueMicrotask(() => client.emit("notification", { method: "turn/completed", params: { threadId: "cancel-thread", turn: { id: "cancel-turn", status: "interrupted", items: [] } } }));
+    return { result: {} };
+  }
   throw new Error(`unexpected cancel request ${method}`);
 });
+const cancelStore = new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-cancel-map-")), "threads.json"));
 const cancelAdapter = new CodexAppServerAdapter({
   rpc: cancelRpc,
-  threadmap: new ThreadMapStore(join(await mkdtemp(join(tmpdir(), "dsh-codex-cancel-map-")), "threads.json")),
+  threadmap: cancelStore,
   skipVersionCheck: true,
   config: { injectMemory: false, requestTimeoutMs: 30_000 },
 });
@@ -291,6 +300,11 @@ setTimeout(() => controller.abort(), 20);
 const cancelled = await cancelPromise;
 assert.equal(cancelled.at(-1).reason.kind, "aborted");
 assert.equal(cancelRpc.requests.filter((request) => request.method === "turn/interrupt").length, 1);
+assert.equal((await cancelStore.get("cancel-session"))?.inFlight, null, "an interrupted ephemeral turn must clear its checkpoint before the next message");
+const afterCancel = await collect(cancelAdapter.stream({ sessionId: "cancel-session", model: "model-1", workspace, messages: [user("cancel-u1", "cancel this request"), user("cancel-u2", "continue after cancel")] }));
+assert.equal(afterCancel.at(-1).reason.kind, "stop", "the next user message must be accepted on the same ephemeral thread");
+assert.equal(cancelTurnStarts, 2);
+assert.equal(cancelRpc.requests.filter((request) => request.method === "thread/read").length, 0, "ephemeral threads must not be read with includeTurns");
 
 const filteringRpc = new FakeRpc(async (method, _params, _options, client) => {
   if (method === "initialize") return { result: {} };
